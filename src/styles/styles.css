@@ -434,6 +434,169 @@ body {
     box-shadow: var(--shadow-xl);
 }
 
+/* Property Details Styles */
+.property-category-badge,
+.listing-type-badge {
+    position: absolute;
+    z-index: 10;
+}
+
+.property-category-badge {
+    top: 15px;
+    left: 15px;
+}
+
+.listing-type-badge {
+    top: 15px;
+    right: 15px;
+}
+
+.property-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.property-prev-btn {
+    left: 15px;
+}
+
+.property-next-btn {
+    right: 15px;
+}
+
+.property-image-counter {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.property-hero-image {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.amenity-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.amenity-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.owner-photo {
+    border: 2px solid var(--primary-color);
+}
+
+/* Share Option Buttons */
+.share-option-btn {
+    transition: all 0.3s ease;
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    position: relative;
+    overflow: hidden;
+}
+
+.share-option-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.share-option-btn i {
+    transition: all 0.3s ease;
+}
+
+.share-option-btn:hover i {
+    transform: scale(1.1);
+}
+
+/* Favorite Button Styles */
+.btn-favorite {
+    background: var(--favorite-gradient);
+    border-color: var(--favorite-color);
+    color: white;
+}
+
+.btn-favorite:hover {
+    background: linear-gradient(135deg, #be185d 0%, #a61e4d 100%);
+    border-color: #be185d;
+    color: white;
+}
+
+.btn-outline-favorite {
+    color: var(--favorite-color);
+    border-color: var(--favorite-color);
+    background: transparent;
+}
+
+.btn-outline-favorite:hover {
+    background-color: var(--favorite-color);
+    border-color: var(--favorite-color);
+    color: white;
+}
+
+/* Property Filter Buttons */
+.property-filter-btn {
+    transition: all 0.3s ease;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.property-filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.property-filter-btn.active {
+    background: var(--primary-gradient) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+
 .bg-gradient {
     background: var(--primary-gradient);
 }

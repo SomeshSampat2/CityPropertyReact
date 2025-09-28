@@ -10,6 +10,7 @@ import Profile from './components/Profile';
 import MyProperties from './components/MyProperties';
 import Requests from './components/Requests';
 import Dashboard from './components/DashboardComplete';
+import PropertyDetails from './components/PropertyDetails';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 const AppContent = () => {
@@ -38,6 +39,7 @@ const AppContent = () => {
                     <Route path="/my-properties" element={<MyProperties />} />
                     <Route path="/requests" element={<Requests />} />
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/property-details" element={<PropertyDetails />} />
                 </Routes>
             </div>
         </div>
