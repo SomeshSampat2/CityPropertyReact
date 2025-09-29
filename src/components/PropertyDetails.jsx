@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { addToFavorites, removeFromFavorites, isPropertyInFavorites } from '../services/favoritesService';
 import '../styles/styles.css';
 
 const PropertyDetails = () => {
@@ -76,8 +77,8 @@ const PropertyDetails = () => {
         if (!user || !propertyId) return;
 
         try {
-            const favoriteDoc = await getDoc(doc(db, 'users', user.uid, 'favorites', propertyId));
-            setIsFavorited(favoriteDoc.exists());
+            const isFavorited = await isPropertyInFavorites(user.uid, propertyId);
+            setIsFavorited(isFavorited);
         } catch (error) {
             console.error('Error checking favorite status:', error);
         }
@@ -102,18 +103,12 @@ const PropertyDetails = () => {
         try {
             if (isFavorited) {
                 // Remove from favorites
-                await db.collection('users').doc(user.uid).collection('favorites').doc(propertyId).delete();
+                await removeFromFavorites(user.uid, propertyId);
                 setIsFavorited(false);
-                alert('Property removed from favorites');
             } else {
                 // Add to favorites
-                await db.collection('users').doc(user.uid).collection('favorites').doc(propertyId).set({
-                    addedAt: new Date(),
-                    userId: user.uid,
-                    propertyId: propertyId
-                });
+                await addToFavorites(user.uid, propertyId);
                 setIsFavorited(true);
-                alert('Property added to favorites!');
             }
         } catch (error) {
             console.error('Error toggling favorite:', error);
