@@ -114,6 +114,14 @@ body {
     50% { transform: scale(1.05); }
 }
 
+@keyframes heartbeat {
+    0% { transform: scale(1); }
+    14% { transform: scale(1.2); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.2); }
+    70% { transform: scale(1); }
+}
+
 .animate-fadeInUp {
     animation: fadeInUp 0.6s ease-out;
 }
@@ -128,6 +136,10 @@ body {
 
 .animate-float {
     animation: float 3s ease-in-out infinite;
+}
+
+.animate-heartbeat {
+    animation: heartbeat 1.5s ease-in-out infinite;
 }
 
 /* ============ LOGIN PAGE ============ */
@@ -574,6 +586,69 @@ body {
     background-color: var(--favorite-color);
     border-color: var(--favorite-color);
     color: white;
+}
+
+.favorite-btn {
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid var(--favorite-color);
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.2);
+}
+
+.favorite-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+    background: rgba(236, 72, 153, 0.1);
+}
+
+.favorite-btn.btn-danger {
+    background: var(--favorite-gradient);
+    border-color: var(--favorite-color);
+    color: white;
+    animation: heartPulse 2s ease-in-out infinite;
+}
+
+.favorite-btn.btn-danger:hover {
+    background: linear-gradient(135deg, #be185d 0%, #a61e4d 100%);
+    border-color: #be185d;
+    color: white;
+}
+
+.favorite-heart {
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.favorite-btn:hover .favorite-heart {
+    animation: heartbeat 0.8s ease-in-out;
+}
+
+/* Favorite button unfavorited state - matching JS project */
+.favorite-btn.btn-outline-danger {
+    color: var(--favorite-color);
+    border-color: var(--favorite-color);
+    background: transparent;
+}
+
+.favorite-btn.btn-outline-danger:hover {
+    background-color: var(--favorite-color);
+    border-color: var(--favorite-color);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Ensure favorite-details-btn has white text when favorited */
+.favorite-details-btn.btn-favorite {
+    color: white !important;
+}
+
+.favorite-details-btn.btn-favorite:hover {
+    color: white !important;
+}
+
+.favorite-details-btn.btn-favorite span {
+    color: white !important;
 }
 
 /* Property Filter Buttons */

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
 import { collection, getDocs, query, where, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { addToFavorites, removeFromFavorites } from '../services/favoritesService';
+import { sampleImages } from '../utils/propertyTypeConfigs';
 import '../styles/styles.css';
 
 // States and cities data
@@ -933,22 +935,20 @@ const Home = () => {
 
             if (isFavorited) {
                 // Remove from favorites
-                await db.collection('users').doc(user.uid).collection('favorites').doc(propertyId).delete();
+                await removeFromFavorites(user.uid, propertyId);
                 setFavorites(prev => {
                     const newSet = new Set(prev);
                     newSet.delete(propertyId);
                     return newSet;
                 });
-                alert('Property removed from favorites');
             } else {
                 // Add to favorites
-                await db.collection('users').doc(user.uid).collection('favorites').doc(propertyId).set({
-                    addedAt: new Date(),
-                    userId: user.uid,
-                    propertyId: propertyId
+                await addToFavorites(user.uid, propertyId);
+                setFavorites(prev => {
+                    const newSet = new Set(prev);
+                    newSet.add(propertyId);
+                    return newSet;
                 });
-                setFavorites(prev => new Set([...prev, propertyId]));
-                alert('Property added to favorites!');
             }
         } catch (error) {
             console.error('Error toggling favorite:', error);
@@ -966,18 +966,6 @@ const Home = () => {
         return types[type] || type || 'Property';
     };
 
-    const sampleImages = [
-        'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1605146769289-440113cc3d00?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1516156008625-3a9d6067fab5?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1613490493576-7fde63acd811?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-        'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
-    ];
 
     if (loading) {
         return (
@@ -1124,14 +1112,14 @@ const Home = () => {
                                         </div>
                                         <div className="position-absolute bottom-0 end-0 m-2">
                                             <button
-                                                className={`btn btn-sm ${favorites.has(property.id) ? 'btn-favorite' : 'btn-outline-favorite'}`}
+                                                className={`btn btn-sm ${favorites.has(property.id) ? 'btn-favorite favorite-btn animate-heartbeat' : 'btn-outline-danger favorite-btn'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     toggleFavorite(property.id);
                                                 }}
                                                 title={favorites.has(property.id) ? 'Remove from favorites' : 'Add to favorites'}
                                             >
-                                                <i className={`favorite-heart ${favorites.has(property.id) ? 'fas' : 'far'}`}></i>
+                                                <i className={`favorite-heart ${favorites.has(property.id) ? 'fas fa-heart' : 'far fa-heart'}`}></i>
                                             </button>
                                         </div>
                                     </div>
