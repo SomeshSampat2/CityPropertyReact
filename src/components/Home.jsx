@@ -7,6 +7,21 @@ import { addToFavorites, removeFromFavorites } from '../services/favoritesServic
 import { sampleImages } from '../utils/propertyTypeConfigs';
 import '../styles/styles.css';
 
+// Check user role function (should match the one in JS project)
+const checkUserRole = async (userId) => {
+    try {
+        const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', userId)));
+        if (!userDoc.empty) {
+            const userData = userDoc.docs[0].data();
+            return userData.role || 'user';
+        }
+        return 'user';
+    } catch (error) {
+        console.error('Error checking user role:', error);
+        return 'user';
+    }
+};
+
 // States and cities data
 const statesAndCities = {
     "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Rajahmundry", "Kadapa", "Kakinada", "Anantapur", "Tirupati"],
@@ -841,6 +856,71 @@ const Home = () => {
         }
     }, [selectedPropertyType]); // Re-run when property type changes
 
+    // Handle I Need Property button role-based visibility
+    React.useEffect(() => {
+        const handleNeedPropertyButtonVisibility = async () => {
+            const needPropertyBtn = document.getElementById("need-property-btn");
+            if (!needPropertyBtn || !user) return;
+
+            try {
+                const userRole = await checkUserRole(user.uid);
+                if (userRole === 'superadmin') {
+                    // Hide the "I Need Property" button for super admins
+                    needPropertyBtn.style.display = 'none';
+                    console.log('👑 Super Admin detected - hiding "I Need Property" button');
+                } else {
+                    // Show the button for regular users
+                    needPropertyBtn.style.display = 'inline-block';
+                    console.log('✅ I Need Property button visible for regular user');
+                }
+            } catch (error) {
+                console.error('Error checking user role:', error);
+                // If error, show button by default (safer approach)
+                needPropertyBtn.style.display = 'inline-block';
+            }
+        };
+
+        handleNeedPropertyButtonVisibility();
+    }, [user, isAuthenticated]);
+
+    // Handle budget field validation
+    React.useEffect(() => {
+        const minBudgetField = document.getElementById('min-budget');
+        const maxBudgetField = document.getElementById('max-budget');
+
+        if (!minBudgetField || !maxBudgetField) return;
+
+        const handleMinBudgetChange = () => {
+            const minValue = parseInt(minBudgetField.value);
+            if (!isNaN(minValue)) {
+                maxBudgetField.min = minValue + 1;
+                // If current max value is less than or equal to min, update it
+                if (parseInt(maxBudgetField.value) <= minValue) {
+                    maxBudgetField.value = minValue + 1000; // Set a reasonable default increment
+                }
+            }
+        };
+
+        const handleMaxBudgetChange = () => {
+            const minValue = parseInt(minBudgetField.value);
+            const maxValue = parseInt(maxBudgetField.value);
+
+            if (!isNaN(minValue) && !isNaN(maxValue) && maxValue <= minValue) {
+                maxBudgetField.setCustomValidity('Maximum budget must be greater than minimum budget');
+            } else {
+                maxBudgetField.setCustomValidity('');
+            }
+        };
+
+        minBudgetField.addEventListener('input', handleMinBudgetChange);
+        maxBudgetField.addEventListener('input', handleMaxBudgetChange);
+
+        return () => {
+            minBudgetField.removeEventListener('input', handleMinBudgetChange);
+            maxBudgetField.removeEventListener('input', handleMaxBudgetChange);
+        };
+    }, []);
+
     // Redirect if not authenticated
     React.useEffect(() => {
         if (!isAuthenticated) {
@@ -966,6 +1046,112 @@ const Home = () => {
         return types[type] || type || 'Property';
     };
 
+    // Handle property request form submission
+    const handleRequestPropertySubmit = async (e) => {
+        e.preventDefault();
+        console.log('📝 Property request form submitted');
+
+        // Get form data
+        const minBudget = parseInt(document.getElementById('min-budget').value);
+        const maxBudget = parseInt(document.getElementById('max-budget').value);
+
+        const formData = {
+            propertyType: document.querySelector('input[name="requested-property-type"]:checked')?.value,
+            area: document.getElementById('request-area').value,
+            minBudget: minBudget,
+            maxBudget: maxBudget,
+            description: document.getElementById('request-description').value,
+            createdAt: serverTimestamp(),
+            status: 'pending' // You can define what happens next
+        };
+
+        // Validate required fields
+        if (!formData.propertyType || !formData.area || !formData.description || isNaN(minBudget) || isNaN(maxBudget)) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        // Validate budget range
+        if (minBudget >= maxBudget) {
+            alert('Minimum budget must be less than maximum budget.');
+            return;
+        }
+
+        if (minBudget < 0 || maxBudget < 0) {
+            alert('Budget values cannot be negative.');
+            return;
+        }
+
+        // Check if user is authenticated
+        if (!user) {
+            alert('You must be logged in to submit a property request.');
+            return;
+        }
+
+        // Add user ID to form data
+        const completeFormData = {
+            ...formData,
+            userId: user.uid,
+            updatedAt: serverTimestamp()
+        };
+
+        try {
+            console.log('💾 Saving property request to Firestore for user:', user.uid);
+
+            // Save to Firestore propertyRequests collection
+            const docRef = await addDoc(collection(db, 'propertyRequests'), completeFormData);
+
+            console.log('✅ Property request saved with ID:', docRef.id);
+            console.log('📊 Saved data:', {
+                id: docRef.id,
+                userId: user.uid,
+                propertyType: completeFormData.propertyType,
+                area: completeFormData.area,
+                budgetRange: `₹${completeFormData.minBudget} - ₹${completeFormData.maxBudget}`,
+                status: completeFormData.status
+            });
+
+            // Close modal
+            const requestModal = window.bootstrap.Modal.getInstance(document.getElementById('requestPropertyModal'));
+            if (requestModal) {
+                requestModal.hide();
+            }
+
+            // Reset form
+            document.getElementById('request-property-form').reset();
+
+            // Clear budget field constraints
+            const maxBudgetField = document.getElementById('max-budget');
+            if (maxBudgetField) {
+                maxBudgetField.min = 0;
+            }
+
+            // Property request submitted successfully
+            console.log('✅ Property request submitted successfully with ID:', docRef.id);
+
+            // Optional: You can add additional functionality here like:
+            // - Sending notification to admins
+            // - Redirecting to a confirmation page
+            // - Updating UI to show request status
+            // - Logging analytics events
+
+            alert('Property request submitted successfully!');
+
+        } catch (error) {
+            console.error('❌ Error submitting property request:', error);
+
+            // Provide more specific error messages
+            let errorMessage = 'Error submitting request. Please try again.';
+            if (error.code === 'permission-denied') {
+                errorMessage = 'You do not have permission to submit requests. Please contact support.';
+            } else if (error.code === 'unavailable') {
+                errorMessage = 'Network error. Please check your connection and try again.';
+            }
+
+            alert(errorMessage);
+        }
+    };
+
 
     if (loading) {
         return (
@@ -990,7 +1176,12 @@ const Home = () => {
                     <button className="btn btn-primary btn-lg shadow-custom animate-float" data-bs-toggle="modal" data-bs-target="#propertyTypeModal">
                         <i className="fas fa-plus me-2"></i>Add Property
                     </button>
-                    <button className="btn btn-success btn-lg shadow-custom animate-float" id="need-property-btn">
+                    <button
+                        className="btn btn-success btn-lg shadow-custom animate-float"
+                        id="need-property-btn"
+                        data-bs-toggle="modal"
+                        data-bs-target="#requestPropertyModal"
+                    >
                         <i className="fas fa-search me-2"></i>I Need Property
                     </button>
                 </div>
@@ -1282,6 +1473,122 @@ const Home = () => {
                                 <button type="submit" className="btn btn-primary btn-lg w-100">
                                     <i className="fas fa-save me-2"></i>Save Property
                                 </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Request Property Modal */}
+            <div className="modal fade" id="requestPropertyModal" tabIndex="-1" aria-labelledby="requestPropertyModalLabel" aria-hidden="true">
+                <div className="modal-dialog modal-lg">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="requestPropertyModalLabel">
+                                <i className="fas fa-search me-2"></i>Request Properties
+                            </h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <form id="request-property-form" onSubmit={handleRequestPropertySubmit}>
+                                {/* Property Type Selection */}
+                                <div className="mb-4">
+                                    <h6 className="text-primary mb-3">
+                                        <i className="fas fa-home me-2"></i>Select Property Type
+                                    </h6>
+                                    <div className="row g-3">
+                                        <div className="col-md-6">
+                                            <div className="form-check">
+                                                <input className="form-check-input" type="radio" name="requested-property-type" id="request-residential" value="residential" required />
+                                                <label className="form-check-label" htmlFor="request-residential">
+                                                    <i className="fas fa-home me-2 text-primary"></i>Residential
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <div className="form-check">
+                                                <input className="form-check-input" type="radio" name="requested-property-type" id="request-commercial" value="commercial" />
+                                                <label className="form-check-label" htmlFor="request-commercial">
+                                                    <i className="fas fa-building me-2 text-success"></i>Commercial
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <div className="form-check">
+                                                <input className="form-check-input" type="radio" name="requested-property-type" id="request-industrial" value="industrial" />
+                                                <label className="form-check-label" htmlFor="request-industrial">
+                                                    <i className="fas fa-industry me-2 text-warning"></i>Industrial
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <div className="form-check">
+                                                <input className="form-check-input" type="radio" name="requested-property-type" id="request-land" value="land" />
+                                                <label className="form-check-label" htmlFor="request-land">
+                                                    <i className="fas fa-map me-2 text-info"></i>Land
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Location/Area Selection */}
+                                <div className="mb-4">
+                                    <h6 className="text-primary mb-3">
+                                        <i className="fas fa-map-marker-alt me-2"></i>Preferred Area/Location
+                                    </h6>
+                                    <div className="mb-3">
+                                        <label htmlFor="request-area" className="form-label">Area/Locality *</label>
+                                        <input type="text" className="form-control" id="request-area" required placeholder="e.g., Andheri West, Bandra, Mumbai, etc." />
+                                    </div>
+                                </div>
+
+                                {/* Budget Range */}
+                                <div className="mb-4">
+                                    <h6 className="text-primary mb-3">
+                                        <i className="fas fa-rupee-sign me-2"></i>Budget Range
+                                    </h6>
+                                    <div className="row">
+                                        <div className="col-md-6 mb-3">
+                                            <label htmlFor="min-budget" className="form-label">Minimum Budget (₹) *</label>
+                                            <div className="input-group">
+                                                <span className="input-group-text">₹</span>
+                                                <input type="number" className="form-control" id="min-budget" required placeholder="e.g., 50000" min="0" />
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6 mb-3">
+                                            <label htmlFor="max-budget" className="form-label">Maximum Budget (₹) *</label>
+                                            <div className="input-group">
+                                                <span className="input-group-text">₹</span>
+                                                <input type="number" className="form-control" id="max-budget" required placeholder="e.g., 200000" min="0" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="form-text">
+                                        <small className="text-muted">Monthly rent range you're comfortable with</small>
+                                    </div>
+                                </div>
+
+                                {/* Description */}
+                                <div className="mb-4">
+                                    <h6 className="text-primary mb-3">
+                                        <i className="fas fa-edit me-2"></i>Description
+                                    </h6>
+                                    <div className="mb-3">
+                                        <label htmlFor="request-description" className="form-label">Tell us about your property requirements *</label>
+                                        <textarea className="form-control" id="request-description" rows="4" required placeholder="Describe your property needs, budget range, specific features, timeline, etc."></textarea>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="d-flex justify-content-end gap-2">
+                                    <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
+                                        <i className="fas fa-times me-2"></i>Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-success">
+                                        <i className="fas fa-paper-plane me-2"></i>Submit Request
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>

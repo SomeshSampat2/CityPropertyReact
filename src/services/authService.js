@@ -89,9 +89,15 @@ export const signOutUser = async () => {
 // Role checking functions
 export const checkUserRole = async (uid) => {
     try {
+        if (!uid) {
+            console.warn("No UID provided for role check");
+            return 'user';
+        }
+
         const docSnap = await getDoc(doc(db, 'users', uid));
         if (docSnap.exists()) {
-            return docSnap.data().role || 'user';
+            const userData = docSnap.data();
+            return userData?.role || 'user';
         }
         return 'user';
     } catch (error) {

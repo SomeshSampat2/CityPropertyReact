@@ -1,9 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import { collection, getDocs, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
+import { collection, getDocs, doc, updateDoc, getDoc, query, where, orderBy } from 'firebase/firestore';
 import { checkUserRole } from '../services/authService';
+
+// Custom styles for dashboard
+const dashboardStyles = `
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.8rem;
+    }
+
+    .user-card {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+
+    .user-card:hover {
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .user-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+    }
+
+    /* Compact card headers for dashboard tables */
+    .card-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .card-header h6 {
+        font-size: 1.1rem;
+    }
+
+    /* Custom table header colors - professional solid colors */
+    .bg-primary-custom {
+        background-color: #2563eb !important;  /* Professional blue */
+    }
+
+    .bg-success-custom {
+        background-color: #059669 !important;  /* Professional green */
+    }
+`;
 
 const DashboardComplete = () => {
     const navigate = useNavigate();
@@ -31,7 +80,7 @@ const DashboardComplete = () => {
         const checkAdminAccess = async () => {
             if (isAuthenticated) {
                 try {
-                    const role = await checkUserRole(window.auth?.currentUser?.uid);
+                    const role = await checkUserRole(auth?.currentUser?.uid);
                     setUserRole(role);
                     // Temporarily allow all authenticated users to access dashboard
                     // if (role !== 'superadmin') {
@@ -119,14 +168,14 @@ const DashboardComplete = () => {
 
             // Fetch user data for all user IDs
             const userPromises = Array.from(userIds).map(userId =>
-                getDocs(doc(db, 'users', userId))
+                getDoc(doc(db, 'users', userId))
             );
 
             const userSnapshots = await Promise.all(userPromises);
             const userMap = new Map();
 
             userSnapshots.forEach(snapshot => {
-                if (snapshot.exists()) {
+                if (snapshot.exists) {
                     const data = snapshot.data();
                     userMap.set(snapshot.id, data);
                 }
@@ -173,16 +222,6 @@ const DashboardComplete = () => {
         return types[type] || type || 'Unknown';
     };
 
-    const getRequestStatusBadge = (status) => {
-        const statusConfig = {
-            'pending': { color: 'warning', text: 'Pending' },
-            'fulfilled': { color: 'success', text: 'Fulfilled' },
-            'cancelled': { color: 'danger', text: 'Cancelled' }
-        };
-
-        const config = statusConfig[status] || statusConfig['pending'];
-        return `<span class="badge bg-${config.color} status-badge">${config.text}</span>`;
-    };
 
     const viewUser = (userId) => {
         const user = users.find(u => u.id === userId);
@@ -270,9 +309,11 @@ const DashboardComplete = () => {
     }
 
     return (
-        <div className="container mt-3 mb-4">
-            <div className="row">
-                <div className="col-12">
+        <>
+            <style dangerouslySetInnerHTML={{ __html: dashboardStyles }} />
+            <div className="container mt-3 mb-4">
+                <div className="row">
+                    <div className="col-12">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <div>
                             <h3 className="fw-bold text-gradient mb-1">
@@ -438,8 +479,15 @@ const DashboardComplete = () => {
                                         {propertyRequests.map(request => {
                                             const requestDate = request.createdAt ?
                                                 request.createdAt.toDate().toLocaleDateString() : 'Unknown';
-                                            const statusBadge = getRequestStatusBadge(request.status);
                                             const budgetRange = `₹${request.minBudget?.toLocaleString() || 'N/A'} - ₹${request.maxBudget?.toLocaleString() || 'N/A'}`;
+
+                                            const statusConfig = {
+                                                'pending': { color: 'warning', text: 'Pending' },
+                                                'fulfilled': { color: 'success', text: 'Fulfilled' },
+                                                'cancelled': { color: 'danger', text: 'Cancelled' }
+                                            };
+
+                                            const config = statusConfig[request.status] || statusConfig['pending'];
 
                                             return (
                                                 <tr key={request.id} className="property-request-row" data-request-id={request.id}>
@@ -452,7 +500,11 @@ const DashboardComplete = () => {
                                                     </td>
                                                     <td>{request.area || 'Not specified'}</td>
                                                     <td>{budgetRange}</td>
-                                                    <td dangerouslySetInnerHTML={{ __html: statusBadge }}></td>
+                                                    <td>
+                                                        <span className={`badge bg-${config.color} status-badge`}>
+                                                            {config.text}
+                                                        </span>
+                                                    </td>
                                                     <td>{requestDate}</td>
                                                     <td>
                                                         <button
@@ -664,8 +716,8 @@ const DashboardComplete = () => {
                                                     </div>
                                                     <div className="col-md-6">
                                                         <p><strong>Budget Range:</strong> ₹{selectedRequest.minBudget?.toLocaleString() || 'N/A'} - ₹{selectedRequest.maxBudget?.toLocaleString() || 'N/A'}</p>
-                                                        <p><strong>Status:</strong> <span className={`badge bg-${getRequestStatusBadge(selectedRequest.status).includes('warning') ? 'warning' : getRequestStatusBadge(selectedRequest.status).includes('success') ? 'success' : 'danger'}`}>
-                                                            {getRequestStatusBadge(selectedRequest.status).match(/>([^<]+)</)?.[1] || 'Unknown'}
+                                                        <p><strong>Status:</strong> <span className={`badge bg-${selectedRequest.status === 'pending' ? 'warning' : selectedRequest.status === 'fulfilled' ? 'success' : 'danger'}`}>
+                                                            {selectedRequest.status === 'pending' ? 'Pending' : selectedRequest.status === 'fulfilled' ? 'Fulfilled' : 'Cancelled'}
                                                         </span></p>
                                                     </div>
                                                 </div>
@@ -707,7 +759,8 @@ const DashboardComplete = () => {
                     </div>
                 </div>
             )}
-        </div>
+            </div>
+        </>
     );
 };
 
