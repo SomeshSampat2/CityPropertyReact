@@ -1,26 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { signOutUser, checkUserRole } from '../services/authService';
+import { signOutUser, isSuperAdminEmail } from '../services/authService';
 
 const Toolbar = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, userData } = useAuth();
-    const [userRole, setUserRole] = useState(null);
-
-    useEffect(() => {
-        if (user) {
-            checkUserRole(user.uid).then(role => {
-                setUserRole(role);
-            }).catch(error => {
-                console.error('Error fetching user role:', error);
-                setUserRole('user'); // Default role
-            });
-        } else {
-            setUserRole(null);
-        }
-    }, [user]);
+    const { user, userData, userRole, loading } = useAuth();
 
     const handleLogout = async () => {
         try {
@@ -36,17 +22,44 @@ const Toolbar = () => {
         return location.pathname === path ? 'toolbar-active' : '';
     };
 
+    // Get current role, with fallback to userData.role if userRole is not yet loaded
+    // Also check if user is superadmin by email as a fallback
+    const currentRole = userRole || userData?.role || (user?.email && isSuperAdminEmail(user.email) ? 'superadmin' : 'user');
+
     // Memoize role checks to prevent recalculation on every render
     const shouldShowRequests = useMemo(() => {
-        return userRole && ['admin', 'superadmin'].includes(userRole);
-    }, [userRole]);
+        // Show requests tab only for superadmin users
+        return currentRole === 'superadmin';
+    }, [currentRole]);
 
     const shouldShowDashboard = useMemo(() => {
-        return userRole && ['admin', 'superadmin'].includes(userRole);
-    }, [userRole]);
+        // Show dashboard tab only for superadmin users
+        return currentRole === 'superadmin';
+    }, [currentRole]);
+
+    // Debug logging for troubleshooting (remove in production)
+    console.log('Toolbar - userRole:', userRole, 'userData.role:', userData?.role, 'user.email:', user?.email, 'isSuperAdminEmail:', user?.email ? isSuperAdminEmail(user.email) : false, 'currentRole:', currentRole, 'shouldShowRequests:', shouldShowRequests, 'shouldShowDashboard:', shouldShowDashboard);
 
     if (!user) {
         return null; // Don't show toolbar if user is not authenticated
+    }
+
+    // Show loading state while auth is loading
+    if (loading) {
+        return (
+            <nav className="navbar navbar-expand-lg">
+                <div className="container-fluid">
+                    <Link className="navbar-brand text-primary fw-bold" to="/home">
+                        CityProperty
+                    </Link>
+                    <div className="d-flex justify-content-end">
+                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        );
     }
 
     return (

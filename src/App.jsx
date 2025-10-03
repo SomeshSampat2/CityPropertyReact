@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
 import Toolbar from './components/Toolbar';
 import Home from './components/Home';
@@ -37,8 +38,8 @@ const AppContent = () => {
                     <Route path="/about" element={<About />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/my-properties" element={<MyProperties />} />
-                    <Route path="/requests" element={<Requests />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/requests" element={<ProtectedRoute requiredRole="superadmin"><Requests /></ProtectedRoute>} />
+                    <Route path="/dashboard" element={<ProtectedRoute requiredRole="superadmin"><Dashboard /></ProtectedRoute>} />
                     <Route path="/property-details" element={<PropertyDetails />} />
                 </Routes>
             </div>
