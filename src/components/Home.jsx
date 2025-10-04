@@ -1,26 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { checkUserRole } from '../services/authService';
 import { db } from '../config/firebase';
 import { collection, getDocs, query, where, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { addToFavorites, removeFromFavorites } from '../services/favoritesService';
 import { sampleImages } from '../utils/propertyTypeConfigs';
 import '../styles/styles.css';
 
-// Check user role function (should match the one in JS project)
-const checkUserRole = async (userId) => {
-    try {
-        const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', userId)));
-        if (!userDoc.empty) {
-            const userData = userDoc.docs[0].data();
-            return userData.role || 'user';
-        }
-        return 'user';
-    } catch (error) {
-        console.error('Error checking user role:', error);
-        return 'user';
-    }
-};
 
 // States and cities data
 const statesAndCities = {
@@ -66,51 +53,51 @@ const propertyTypeConfigs = {
             {
                 section: "Configuration & Area",
                 icon: "fas fa-ruler-combined",
-                fields: [
-                    { type: "number", id: "built-up-area", label: "Built Up Area (sq ft)", placeholder: "e.g., 1200", required: true },
-                    { type: "number", id: "carpet-area", label: "Carpet Area (sq ft)", placeholder: "e.g., 1000" },
-                    { type: "select", id: "property-age", label: "Age of Property", options: ["Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"], default: "Less than 1 year" },
-                    { type: "select", id: "total-floors", label: "Total Floors in Building", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"], default: "5" },
-                    { type: "select", id: "floor-number", label: "Floor Number", options: ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor", "7th Floor", "8th Floor", "9th Floor", "10th Floor", "11+ Floor"], default: "Ground Floor" },
-                    { type: "select", id: "bathrooms", label: "Number of Bathrooms", options: ["1", "2", "3", "4+"], default: "2" },
-                    { type: "select", id: "balconies", label: "Number of Balconies", options: ["0", "1", "2", "3", "4+"], default: "1" },
-                    { type: "select", id: "furnishing", label: "Furnishing Status", options: ["Fully Furnished", "Semi-Furnished", "Unfurnished"], default: "Semi-Furnished" }
-                ]
+                    fields: [
+                        { type: "number", id: "builtUpArea", label: "Built Up Area (sq ft)", placeholder: "e.g., 1200", required: true },
+                        { type: "number", id: "carpetArea", label: "Carpet Area (sq ft)", placeholder: "e.g., 1000" },
+                        { type: "select", id: "propertyAge", label: "Age of Property", options: ["Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"], default: "Less than 1 year" },
+                        { type: "select", id: "totalFloors", label: "Total Floors in Building", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"], default: "5" },
+                        { type: "select", id: "floorNumber", label: "Floor Number", options: ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor", "7th Floor", "8th Floor", "9th Floor", "10th Floor", "11+ Floor"], default: "Ground Floor" },
+                        { type: "select", id: "bathrooms", label: "Number of Bathrooms", options: ["1", "2", "3", "4+"], default: "2" },
+                        { type: "select", id: "balconies", label: "Number of Balconies", options: ["0", "1", "2", "3", "4+"], default: "1" },
+                        { type: "select", id: "furnishing", label: "Furnishing Status", options: ["Fully Furnished", "Semi-Furnished", "Unfurnished"], default: "Semi-Furnished" }
+                    ]
             },
             {
                 section: "Parking & Accessibility",
                 icon: "fas fa-parking",
                 fields: [
-                    { type: "select", id: "covered-parking", label: "Covered Parking", options: ["No", "1 slot", "2 slots", "3 slots", "4+ slots"], default: "1 slot" },
-                    { type: "select", id: "open-parking", label: "Open Parking", options: ["No", "1 slot (2-wheeler)", "1 slot (4-wheeler)", "2 slots", "3+ slots"], default: "No" },
-                    { type: "select", id: "parking-charges", label: "Parking Charges", options: ["Included in rent", "Separate charges"], default: "Included in rent" }
+                    { type: "select", id: "coveredParking", label: "Covered Parking", options: ["No", "1 slot", "2 slots", "3 slots", "4+ slots"], default: "1 slot" },
+                    { type: "select", id: "openParking", label: "Open Parking", options: ["No", "1 slot (2-wheeler)", "1 slot (4-wheeler)", "2 slots", "3+ slots"], default: "No" },
+                    { type: "select", id: "parkingCharges", label: "Parking Charges", options: ["Included in rent", "Separate charges"], default: "Included in rent" }
                 ]
             },
             {
                 section: "Tenancy Details",
                 icon: "fas fa-users",
                 fields: [
-                    { type: "select", id: "tenant-type", label: "Preferred Tenant Type", options: ["Family", "Bachelors", "Company"], default: "Family" },
-                    { type: "radio", id: "pet-friendly", label: "Pet Friendly", options: ["Yes", "No"], default: "Yes" },
-                    { type: "select", id: "available-from", label: "Available From", options: ["Immediate", "Within 15 days", "Within 30 days", "After 30 days"], default: "Immediate" },
-                    { type: "select", id: "maintenance-charges", label: "Maintenance Charges", options: ["Included in rent", "Separate charges"], default: "Included in rent" }
+                    { type: "select", id: "tenantType", label: "Preferred Tenant Type", options: ["Family", "Bachelors", "Company"], default: "Family" },
+                    { type: "radio", id: "petFriendly", label: "Pet Friendly", options: ["Yes", "No"], default: "Yes" },
+                    { type: "select", id: "availableFrom", label: "Available From", options: ["Immediate", "Within 15 days", "Within 30 days", "After 30 days"], default: "Immediate" },
+                    { type: "select", id: "maintenanceCharges", label: "Maintenance Charges", options: ["Included in rent", "Separate charges"], default: "Included in rent" }
                 ]
             },
             {
                 section: "Payments & Contracts",
                 icon: "fas fa-money-bill-wave",
                 fields: [
-                    { type: "select", id: "security-deposit", label: "Security Deposit", options: ["None", "1 month", "2 months", "Custom amount"], default: "1 month" },
-                    { type: "select", id: "lock-in-period", label: "Lock-in Period", options: ["None", "1 month", "6 months", "Custom period"], default: "None" },
-                    { type: "select", id: "brokerage-required", label: "Brokerage Required", options: ["No", "15 days rent", "30 days rent", "Custom amount"], default: "No" },
-                    { type: "radio", id: "non-veg-allowed", label: "Non-veg Allowed", options: ["Yes", "No"], default: "Yes" }
+                    { type: "select", id: "securityDeposit", label: "Security Deposit", options: ["None", "1 month", "2 months", "Custom amount"], default: "1 month" },
+                    { type: "select", id: "lockInPeriod", label: "Lock-in Period", options: ["None", "1 month", "6 months", "Custom period"], default: "None" },
+                    { type: "select", id: "brokerageRequired", label: "Brokerage Required", options: ["No", "15 days rent", "30 days rent", "Custom amount"], default: "No" },
+                    { type: "radio", id: "nonVegAllowed", label: "Non-veg Allowed", options: ["Yes", "No"], default: "Yes" }
                 ]
             },
             {
                 section: "Room & Facilities",
                 icon: "fas fa-bed",
                 fields: [
-                    { type: "radio", id: "servant-room", label: "Servant Room Available", options: ["Yes", "No"], default: "No" },
+                    { type: "radio", id: "servantRoom", label: "Servant Room Available", options: ["Yes", "No"], default: "No" },
                     { type: "select", id: "facing", label: "Property Facing", options: ["North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"], default: "North" }
                 ]
             },
@@ -145,7 +132,7 @@ const propertyTypeConfigs = {
                 section: "Residency Details",
                 icon: "fas fa-users",
                 fields: [
-                    { type: "select", id: "residents-count", label: "Current Number of Residents", options: ["1", "2", "3", "4", "5", "6", "7"], default: "2" }
+                    { type: "select", id: "residentsCount", label: "Current Number of Residents", options: ["1", "2", "3", "4", "5", "6", "7"], default: "2" }
                 ]
             }
         ]
@@ -159,88 +146,88 @@ const propertyTypeConfigs = {
             {
                 section: "Type & Category",
                 icon: "fas fa-tags",
-                fields: [
-                    { type: "select", id: "commercial-type", label: "Commercial Type", options: ["Office Space", "Retail Shop", "Showroom", "Restaurant", "Cafe", "Other"], default: "Office Space" }
-                ]
+                    fields: [
+                        { type: "select", id: "commercialType", label: "Commercial Type", options: ["Office Space", "Retail Shop", "Showroom", "Restaurant", "Cafe", "Other"], default: "Office Space" }
+                    ]
             },
             {
                 section: "Location & Building",
                 icon: "fas fa-map-marker-alt",
                 fields: [
-                    { type: "text", id: "building-name", label: "Building/Project/Society/MIDC Name", placeholder: "e.g., Phoenix Mall" },
+                    { type: "text", id: "buildingName", label: "Building/Project/Society/MIDC Name", placeholder: "e.g., Phoenix Mall" },
                     { type: "text", id: "locality", label: "Locality", placeholder: "e.g., Andheri East" },
-                    { type: "select", id: "zone-type", label: "Zone Type", options: ["Commercial", "Industrial", "Residential", "Special Economic", "Open Space", "Agricultural Zone", "Other"], default: "Commercial" },
-                    { type: "select", id: "location-hub", label: "Location Hub", options: ["IT Park", "Business Park", "Other"], default: "Other" }
+                    { type: "select", id: "zoneType", label: "Zone Type", options: ["Commercial", "Industrial", "Residential", "Special Economic", "Open Space", "Agricultural Zone", "Other"], default: "Commercial" },
+                    { type: "select", id: "locationHub", label: "Location Hub", options: ["IT Park", "Business Park", "Other"], default: "Other" }
                 ]
             },
             {
                 section: "Status & Availability",
                 icon: "fas fa-clock",
                 fields: [
-                    { type: "select", id: "possession-status", label: "Possession Status", options: ["Ready to Move", "Under Construction"], default: "Ready to Move" },
-                    { type: "select", id: "available-from", label: "Available From", options: ["Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"], default: "Immediate" }
+                    { type: "select", id: "possessionStatus", label: "Possession Status", options: ["Ready to Move", "Under Construction"], default: "Ready to Move" },
+                    { type: "select", id: "availableFrom", label: "Available From", options: ["Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"], default: "Immediate" }
                 ]
             },
             {
                 section: "Property & Legal",
                 icon: "fas fa-gavel",
                 fields: [
-                    { type: "select", id: "property-condition", label: "Property Condition", options: ["Ready to Use", "Bare Shell"], default: "Ready to Use" },
+                    { type: "select", id: "propertyCondition", label: "Property Condition", options: ["Ready to Use", "Bare Shell"], default: "Ready to Use" },
                     { type: "select", id: "ownership", label: "Ownership", options: ["Freehold", "Leasehold", "Cooperative Society", "Power of Attorney"], default: "Leasehold" },
-                    { type: "number", id: "plot-area", label: "Plot Area (sq ft)", placeholder: "e.g., 5000" },
-                    { type: "number", id: "built-up-area", label: "Built-up Area (sq ft)", placeholder: "e.g., 3000", required: true },
-                    { type: "number", id: "carpet-area", label: "Carpet Area (sq ft)", placeholder: "e.g., 2500" },
-                    { type: "number", id: "total-construction-area", label: "Total Construction Area (sq ft)", placeholder: "e.g., 3500" },
+                    { type: "number", id: "plotArea", label: "Plot Area (sq ft)", placeholder: "e.g., 5000" },
+                    { type: "number", id: "builtUpArea", label: "Built-up Area (sq ft)", placeholder: "e.g., 3000", required: true },
+                    { type: "number", id: "carpetArea", label: "Carpet Area (sq ft)", placeholder: "e.g., 2500" },
+                    { type: "number", id: "totalConstructionArea", label: "Total Construction Area (sq ft)", placeholder: "e.g., 3500" },
                     { type: "number", id: "frontage", label: "Frontage (ft)", placeholder: "e.g., 50" },
-                    { type: "number", id: "road-access", label: "Road Access (ft)", placeholder: "e.g., 40" }
+                    { type: "number", id: "roadAccess", label: "Road Access (ft)", placeholder: "e.g., 40" }
                 ]
             },
             {
                 section: "Lease & Financials",
                 icon: "fas fa-money-bill-wave",
                 fields: [
-                    { type: "number", id: "expected-rent", label: "Expected Rent (₹)", placeholder: "e.g., 50000", required: true },
-                    { type: "radio", id: "rent-negotiable", label: "Is Rent Negotiable", options: ["Yes", "No"], default: "No" },
-                    { type: "select", id: "security-deposit", label: "Security Deposit", options: ["1 month", "2 months", "3 months", "Custom amount"], default: "2 months" },
-                    { type: "select", id: "rent-increase", label: "Expected Rent Increase", options: ["5% annually", "10% annually", "15% annually", "Custom", "No increase"], default: "10% annually" },
-                    { type: "select", id: "lock-in-period", label: "Lock-in Period", options: ["None", "6 months", "1 year", "2 years", "Custom"], default: "1 year" }
+                    { type: "number", id: "expectedRent", label: "Expected Rent (₹)", placeholder: "e.g., 50000", required: true },
+                    { type: "radio", id: "rentNegotiable", label: "Is Rent Negotiable", options: ["Yes", "No"], default: "No" },
+                    { type: "select", id: "securityDeposit", label: "Security Deposit", options: ["1 month", "2 months", "3 months", "Custom amount"], default: "2 months" },
+                    { type: "select", id: "rentIncrease", label: "Expected Rent Increase", options: ["5% annually", "10% annually", "15% annually", "Custom", "No increase"], default: "10% annually" },
+                    { type: "select", id: "lockInPeriod", label: "Lock-in Period", options: ["None", "6 months", "1 year", "2 years", "Custom"], default: "1 year" }
                 ]
             },
             {
                 section: "Charges & Inclusions",
                 icon: "fas fa-calculator",
                 fields: [
-                    { type: "radio", id: "damp-ups-included", label: "Damp UPS Charge Included", options: ["Yes", "No"], default: "No" },
-                    { type: "radio", id: "electricity-included", label: "Electricity Charge Included", options: ["Yes", "No"], default: "No" },
-                    { type: "radio", id: "water-charges-included", label: "Water Charges Included", options: ["Yes", "No"], default: "No" }
+                    { type: "radio", id: "dampUpsIncluded", label: "Damp UPS Charge Included", options: ["Yes", "No"], default: "No" },
+                    { type: "radio", id: "electricityIncluded", label: "Electricity Charge Included", options: ["Yes", "No"], default: "No" },
+                    { type: "radio", id: "waterChargesIncluded", label: "Water Charges Included", options: ["Yes", "No"], default: "No" }
                 ]
             },
             {
                 section: "Floors & Elevation",
                 icon: "fas fa-building",
                 fields: [
-                    { type: "text", id: "your-floor", label: "Your Floor", placeholder: "e.g., 3rd Floor" },
-                    { type: "select", id: "total-floors", label: "Total Floors", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"], default: "5" },
+                    { type: "text", id: "yourFloor", label: "Your Floor", placeholder: "e.g., 3rd Floor" },
+                    { type: "select", id: "totalFloors", label: "Total Floors", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"], default: "5" },
                     { type: "select", id: "staircases", label: "Number of Staircases", options: ["1", "2", "3", "4+"], default: "1" },
-                    { type: "radio", id: "passenger-lift", label: "Passenger Lift", options: ["Yes", "No"], default: "Yes" },
-                    { type: "radio", id: "service-lift", label: "Service Lift", options: ["Yes", "No"], default: "No" }
+                    { type: "radio", id: "passengerLift", label: "Passenger Lift", options: ["Yes", "No"], default: "Yes" },
+                    { type: "radio", id: "serviceLift", label: "Service Lift", options: ["Yes", "No"], default: "No" }
                 ]
             },
             {
                 section: "Parking & Washrooms",
                 icon: "fas fa-parking",
                 fields: [
-                    { type: "select", id: "parking-type", label: "Parking", options: ["Private", "Public"], default: "Private" },
-                    { type: "select", id: "washroom-type", label: "Washroom", options: ["Private", "Public"], default: "Private" }
+                    { type: "select", id: "parkingType", label: "Parking", options: ["Private", "Public"], default: "Private" },
+                    { type: "select", id: "washroomType", label: "Washroom", options: ["Private", "Public"], default: "Private" }
                 ]
             },
             {
                 section: "Facing & Facilities",
                 icon: "fas fa-compass",
                 fields: [
-                    { type: "text", id: "rear-facing", label: "Rear", placeholder: "e.g., Garden" },
+                    { type: "text", id: "rearFacing", label: "Rear", placeholder: "e.g., Garden" },
                     { type: "select", id: "facing", label: "Facing", options: ["North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"], default: "North" },
-                    { type: "text", id: "road-facing", label: "Road", placeholder: "e.g., Main Road" }
+                    { type: "text", id: "roadFacing", label: "Road", placeholder: "e.g., Main Road" }
                 ]
             }
         ]
@@ -254,9 +241,9 @@ const propertyTypeConfigs = {
             {
                 section: "Type & Category",
                 icon: "fas fa-tags",
-                fields: [
-                    { type: "select", id: "industrial-type", label: "Industrial Type", options: ["Warehouse", "Plot", "Industrial Shed"], default: "Warehouse" }
-                ]
+                    fields: [
+                        { type: "select", id: "industrialType", label: "Industrial Type", options: ["Warehouse", "Plot", "Industrial Shed"], default: "Warehouse" }
+                    ]
             },
             {
                 section: "Location & Building",
@@ -264,93 +251,93 @@ const propertyTypeConfigs = {
                 fields: [
                     { type: "text", id: "building-name", label: "Building/Project/Society/MIDC Name", placeholder: "e.g., MIDC Industrial Area" },
                     { type: "text", id: "locality", label: "Locality", placeholder: "e.g., Waluj MIDC" },
-                    { type: "select", id: "zone-type", label: "Zone Type", options: ["Commercial", "Industrial", "Residential", "Special Economic", "Open Space", "Agricultural Zone", "Other"], default: "Industrial" },
-                    { type: "select", id: "location-hub", label: "Location Hub", options: ["IT Park", "Business Park", "Other"], default: "Other" }
+                    { type: "select", id: "zoneType", label: "Zone Type", options: ["Commercial", "Industrial", "Residential", "Special Economic", "Open Space", "Agricultural Zone", "Other"], default: "Industrial" },
+                    { type: "select", id: "locationHub", label: "Location Hub", options: ["IT Park", "Business Park", "Other"], default: "Other" }
                 ]
             },
             {
                 section: "Status & Availability",
                 icon: "fas fa-clock",
                 fields: [
-                    { type: "select", id: "possession-status", label: "Possession Status", options: ["Ready to Move", "Under Construction"], default: "Ready to Move" },
-                    { type: "select", id: "available-from", label: "Available From", options: ["Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"], default: "Immediate" }
+                    { type: "select", id: "possessionStatus", label: "Possession Status", options: ["Ready to Move", "Under Construction"], default: "Ready to Move" },
+                    { type: "select", id: "availableFrom", label: "Available From", options: ["Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"], default: "Immediate" }
                 ]
             },
             {
                 section: "Property & Legal",
                 icon: "fas fa-gavel",
                 fields: [
-                    { type: "select", id: "property-condition", label: "Property Condition", options: ["Ready to Use", "Bare Shell"], default: "Ready to Use" },
+                    { type: "select", id: "propertyCondition", label: "Property Condition", options: ["Ready to Use", "Bare Shell"], default: "Ready to Use" },
                     { type: "select", id: "ownership", label: "Ownership", options: ["Freehold", "Leasehold", "Cooperative Society", "Power of Attorney"], default: "Leasehold" },
-                    { type: "number", id: "plot-area", label: "Plot Area (sq ft)", placeholder: "e.g., 10000", required: true },
-                    { type: "number", id: "built-up-area", label: "Built-up Area (sq ft)", placeholder: "e.g., 8000" },
-                    { type: "number", id: "carpet-area", label: "Carpet Area (sq ft)", placeholder: "e.g., 7000" },
-                    { type: "number", id: "total-construction-area", label: "Total Construction Area (sq ft)", placeholder: "e.g., 9000" },
+                    { type: "number", id: "plotArea", label: "Plot Area (sq ft)", placeholder: "e.g., 10000", required: true },
+                    { type: "number", id: "builtUpArea", label: "Built-up Area (sq ft)", placeholder: "e.g., 8000" },
+                    { type: "number", id: "carpetArea", label: "Carpet Area (sq ft)", placeholder: "e.g., 7000" },
+                    { type: "number", id: "totalConstructionArea", label: "Total Construction Area (sq ft)", placeholder: "e.g., 9000" },
                     { type: "number", id: "frontage", label: "Frontage (ft)", placeholder: "e.g., 100" },
-                    { type: "number", id: "road-access", label: "Road Access (ft)", placeholder: "e.g., 80" }
+                    { type: "number", id: "roadAccess", label: "Road Access (ft)", placeholder: "e.g., 80" }
                 ]
             },
             {
                 section: "Industrial/Shed Specific",
                 icon: "fas fa-cog",
                 fields: [
-                    { type: "number", id: "shed-height", label: "Shed Height (ft)", placeholder: "e.g., 20" },
-                    { type: "number", id: "shed-side-wall-height", label: "Shed Side Wall Height (ft)", placeholder: "e.g., 15" },
-                    { type: "text", id: "plot-dimensions", label: "Width, Length", placeholder: "e.g., 100 ft x 200 ft" },
-                    { type: "number", id: "shed-built-up-area", label: "Built-up Area (Shed) (sq ft)", placeholder: "e.g., 5000" },
-                    { type: "number", id: "built-up-construction-area", label: "Built-up Construction Area (sq ft)", placeholder: "e.g., 6000" },
-                    { type: "select", id: "electricity-load", label: "Electricity Load", options: ["Up to 50 KW", "50-100 KW", "100-500 KW", "500+ KW"], default: "Up to 50 KW" },
-                    { type: "radio", id: "water-available", label: "Water", options: ["Yes", "No"], default: "Yes" },
-                    { type: "radio", id: "pre-leased", label: "Is it Pre-leased", options: ["Yes", "No"], default: "No" },
-                    { type: "radio", id: "pre-rented", label: "Is it Pre-rented", options: ["Yes", "No"], default: "No" }
+                    { type: "number", id: "shedHeight", label: "Shed Height (ft)", placeholder: "e.g., 20" },
+                    { type: "number", id: "shedSideWallHeight", label: "Shed Side Wall Height (ft)", placeholder: "e.g., 15" },
+                    { type: "text", id: "plotDimensions", label: "Width, Length", placeholder: "e.g., 100 ft x 200 ft" },
+                    { type: "number", id: "shedBuiltUpArea", label: "Built-up Area (Shed) (sq ft)", placeholder: "e.g., 5000" },
+                    { type: "number", id: "builtUpConstructionArea", label: "Built-up Construction Area (sq ft)", placeholder: "e.g., 6000" },
+                    { type: "select", id: "electricityLoad", label: "Electricity Load", options: ["Up to 50 KW", "50-100 KW", "100-500 KW", "500+ KW"], default: "Up to 50 KW" },
+                    { type: "radio", id: "waterAvailable", label: "Water", options: ["Yes", "No"], default: "Yes" },
+                    { type: "radio", id: "preLeased", label: "Is it Pre-leased", options: ["Yes", "No"], default: "No" },
+                    { type: "radio", id: "preRented", label: "Is it Pre-rented", options: ["Yes", "No"], default: "No" }
                 ]
             },
             {
                 section: "Lease & Financials",
                 icon: "fas fa-money-bill-wave",
                 fields: [
-                    { type: "number", id: "expected-rent", label: "Expected Rent (₹)", placeholder: "e.g., 100000", required: true },
-                    { type: "radio", id: "rent-negotiable", label: "Is Rent Negotiable", options: ["Yes", "No"], default: "No" },
-                    { type: "select", id: "security-deposit", label: "Security Deposit", options: ["1 month", "2 months", "3 months", "Custom amount"], default: "2 months" },
-                    { type: "select", id: "rent-increase", label: "Expected Rent Increase", options: ["5% annually", "10% annually", "15% annually", "Custom", "No increase"], default: "10% annually" },
-                    { type: "select", id: "lock-in-period", label: "Lock-in Period", options: ["None", "6 months", "1 year", "2 years", "Custom"], default: "1 year" }
+                    { type: "number", id: "expectedRent", label: "Expected Rent (₹)", placeholder: "e.g., 100000", required: true },
+                    { type: "radio", id: "rentNegotiable", label: "Is Rent Negotiable", options: ["Yes", "No"], default: "No" },
+                    { type: "select", id: "securityDeposit", label: "Security Deposit", options: ["1 month", "2 months", "3 months", "Custom amount"], default: "2 months" },
+                    { type: "select", id: "rentIncrease", label: "Expected Rent Increase", options: ["5% annually", "10% annually", "15% annually", "Custom", "No increase"], default: "10% annually" },
+                    { type: "select", id: "lockInPeriod", label: "Lock-in Period", options: ["None", "6 months", "1 year", "2 years", "Custom"], default: "1 year" }
                 ]
             },
             {
                 section: "Charges & Inclusions",
                 icon: "fas fa-calculator",
                 fields: [
-                    { type: "radio", id: "damp-ups-included", label: "Damp UPS Charge Included", options: ["Yes", "No"], default: "No" },
-                    { type: "radio", id: "electricity-included", label: "Electricity Charge Included", options: ["Yes", "No"], default: "No" },
-                    { type: "radio", id: "water-charges-included", label: "Water Charges Included", options: ["Yes", "No"], default: "No" }
+                    { type: "radio", id: "dampUpsIncluded", label: "Damp UPS Charge Included", options: ["Yes", "No"], default: "No" },
+                    { type: "radio", id: "electricityIncluded", label: "Electricity Charge Included", options: ["Yes", "No"], default: "No" },
+                    { type: "radio", id: "waterChargesIncluded", label: "Water Charges Included", options: ["Yes", "No"], default: "No" }
                 ]
             },
             {
                 section: "Floors & Elevation",
                 icon: "fas fa-building",
                 fields: [
-                    { type: "text", id: "your-floor", label: "Your Floor", placeholder: "e.g., Ground Floor" },
-                    { type: "select", id: "total-floors", label: "Total Floors", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"], default: "1" },
+                    { type: "text", id: "yourFloor", label: "Your Floor", placeholder: "e.g., Ground Floor" },
+                    { type: "select", id: "totalFloors", label: "Total Floors", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"], default: "1" },
                     { type: "select", id: "staircases", label: "Number of Staircases", options: ["1", "2", "3", "4+"], default: "1" },
-                    { type: "radio", id: "passenger-lift", label: "Passenger Lift", options: ["Yes", "No"], default: "No" },
-                    { type: "radio", id: "service-lift", label: "Service Lift", options: ["Yes", "No"], default: "No" }
+                    { type: "radio", id: "passengerLift", label: "Passenger Lift", options: ["Yes", "No"], default: "No" },
+                    { type: "radio", id: "serviceLift", label: "Service Lift", options: ["Yes", "No"], default: "No" }
                 ]
             },
             {
                 section: "Parking & Washrooms",
                 icon: "fas fa-parking",
                 fields: [
-                    { type: "select", id: "parking-type", label: "Parking", options: ["Private", "Public"], default: "Private" },
-                    { type: "select", id: "washroom-type", label: "Washroom", options: ["Private", "Public"], default: "Private" }
+                    { type: "select", id: "parkingType", label: "Parking", options: ["Private", "Public"], default: "Private" },
+                    { type: "select", id: "washroomType", label: "Washroom", options: ["Private", "Public"], default: "Private" }
                 ]
             },
             {
                 section: "Facing & Facilities",
                 icon: "fas fa-compass",
                 fields: [
-                    { type: "text", id: "rear-facing", label: "Rear", placeholder: "e.g., Open Space" },
+                    { type: "text", id: "rearFacing", label: "Rear", placeholder: "e.g., Open Space" },
                     { type: "select", id: "facing", label: "Facing", options: ["North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"], default: "North" },
-                    { type: "text", id: "road-facing", label: "Road", placeholder: "e.g., Service Road" }
+                    { type: "text", id: "roadFacing", label: "Road", placeholder: "e.g., Service Road" }
                 ]
             }
         ]
@@ -365,12 +352,12 @@ const propertyTypeConfigs = {
                 section: "Land Features",
                 icon: "fas fa-map",
                 fields: [
-                    { type: "select", id: "land-type", label: "Land Type", options: ["Residential Plot", "Commercial Plot", "Industrial Plot", "Agricultural Land", "Farm Land", "NA Plot"], default: "Residential Plot" },
-                    { type: "number", id: "property-area", label: "Area (sq ft)", placeholder: "e.g., 5000", required: true },
-                    { type: "number", id: "area-acres", label: "Area (Acres)", placeholder: "e.g., 0.11" },
-                    { type: "select", id: "land-facing", label: "Facing", options: ["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"], default: "North" },
-                    { type: "select", id: "road-width", label: "Road Width", options: ["Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft"], default: "20-30 ft" },
-                    { type: "select", id: "land-status", label: "Status", options: ["Clear Title", "Litigation", "Under Development", "Ready for Construction"], default: "Clear Title" }
+                    { type: "select", id: "landType", label: "Land Type", options: ["Residential Plot", "Commercial Plot", "Industrial Plot", "Agricultural Land", "Farm Land", "NA Plot"], default: "Residential Plot" },
+                    { type: "number", id: "propertyArea", label: "Area (sq ft)", placeholder: "e.g., 5000", required: true },
+                    { type: "number", id: "areaAcres", label: "Area (Acres)", placeholder: "e.g., 0.11" },
+                    { type: "select", id: "landFacing", label: "Facing", options: ["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"], default: "North" },
+                    { type: "select", id: "roadWidth", label: "Road Width", options: ["Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft"], default: "20-30 ft" },
+                    { type: "select", id: "landStatus", label: "Status", options: ["Clear Title", "Litigation", "Under Development", "Ready for Construction"], default: "Clear Title" }
                 ]
             },
             {
@@ -397,7 +384,9 @@ const propertyTypeConfigs = {
 
 const Home = () => {
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, userRole } = useAuth();
+    const [canAddProperty, setCanAddProperty] = useState(false);
+    const [canRequestProperty, setCanRequestProperty] = useState(true);
     const [allProperties, setAllProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentFilter, setCurrentFilter] = useState('all');
@@ -692,6 +681,7 @@ const Home = () => {
         }
     };
 
+
     // Handle form submission
     const handleFormSubmit = async (e) => {
         e.preventDefault();
@@ -709,23 +699,30 @@ const Home = () => {
                 description: document.getElementById('property-description').value,
                 price: parseInt(document.getElementById('property-price').value),
                 propertyType: selectedPropertyType,
+                listingType: 'rent', // Always rental for now, matching JS project
 
                 // Address information
-                address: document.getElementById('property-address').value,
-                location: document.getElementById('location-details').value,
+                buildingName: document.getElementById('property-address').value,
+                address: document.getElementById('location-details').value,
+                locationDetails: document.getElementById('location-details').value,
                 state: document.getElementById('property-state').value,
                 city: document.getElementById('property-city').value,
                 pincode: document.getElementById('property-pincode').value,
 
-                // All form data fields
+                // Form data fields (now using camelCase field IDs)
                 ...formData,
 
                 // Amenities
                 amenities: amenities,
 
-                // Metadata
+                // Owner information
                 owner: user.uid,
                 ownerName: user.displayName || 'Property Owner',
+                ownerEmail: user.email,
+                ownerPhoto: user.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150&q=80',
+                ownerRole: userRole,
+
+                // Metadata
                 isActive: true,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
@@ -856,32 +853,51 @@ const Home = () => {
         }
     }, [selectedPropertyType]); // Re-run when property type changes
 
-    // Handle I Need Property button role-based visibility
+    // Check if user can request properties (all roles except super admin)
     React.useEffect(() => {
-        const handleNeedPropertyButtonVisibility = async () => {
-            const needPropertyBtn = document.getElementById("need-property-btn");
-            if (!needPropertyBtn || !user) return;
+        const checkRequestPropertyPermission = async () => {
+            if (!user) {
+                setCanRequestProperty(true);
+                return;
+            }
 
             try {
                 const userRole = await checkUserRole(user.uid);
-                if (userRole === 'superadmin') {
-                    // Hide the "I Need Property" button for super admins
-                    needPropertyBtn.style.display = 'none';
-                    console.log('👑 Super Admin detected - hiding "I Need Property" button');
-                } else {
-                    // Show the button for regular users
-                    needPropertyBtn.style.display = 'inline-block';
-                    console.log('✅ I Need Property button visible for regular user');
-                }
+                // Hide property request button for super admins (they manage requests)
+                const canRequest = userRole !== 'superadmin';
+                setCanRequestProperty(canRequest);
+                console.log(`🛡️ User role: ${userRole}, can request property: ${canRequest}`);
             } catch (error) {
-                console.error('Error checking user role:', error);
-                // If error, show button by default (safer approach)
-                needPropertyBtn.style.display = 'inline-block';
+                console.error('Error checking request property permission:', error);
+                setCanRequestProperty(true); // Default to showing if error
             }
         };
 
-        handleNeedPropertyButtonVisibility();
-    }, [user, isAuthenticated]);
+        checkRequestPropertyPermission();
+    }, [user]);
+
+    // Check if user can add properties (brokers, admins, super admins)
+    React.useEffect(() => {
+        const checkAddPropertyPermission = async () => {
+            if (!user) {
+                setCanAddProperty(false);
+                return;
+            }
+
+            try {
+                const userRole = await checkUserRole(user.uid);
+                // Allow property addition for broker, admin, and superadmin roles
+                const canAdd = ['broker', 'admin', 'superadmin'].includes(userRole);
+                setCanAddProperty(canAdd);
+                console.log(`🔐 User role: ${userRole}, can add property: ${canAdd}`);
+            } catch (error) {
+                console.error('Error checking add property permission:', error);
+                setCanAddProperty(false);
+            }
+        };
+
+        checkAddPropertyPermission();
+    }, [user]);
 
     // Handle budget field validation
     React.useEffect(() => {
@@ -1173,17 +1189,20 @@ const Home = () => {
                     <p className="lead text-muted">Discover your dream property with our exclusive collection</p>
                 </div>
                 <div className="d-flex gap-3">
-                    <button className="btn btn-primary btn-lg shadow-custom animate-float" data-bs-toggle="modal" data-bs-target="#propertyTypeModal">
-                        <i className="fas fa-plus me-2"></i>Add Property
-                    </button>
-                    <button
-                        className="btn btn-success btn-lg shadow-custom animate-float"
-                        id="need-property-btn"
-                        data-bs-toggle="modal"
-                        data-bs-target="#requestPropertyModal"
-                    >
-                        <i className="fas fa-search me-2"></i>I Need Property
-                    </button>
+                    {canAddProperty && (
+                        <button className="btn btn-primary btn-lg shadow-custom animate-float" data-bs-toggle="modal" data-bs-target="#propertyTypeModal">
+                            <i className="fas fa-plus me-2"></i>Add Property
+                        </button>
+                    )}
+                    {canRequestProperty && (
+                        <button
+                            className="btn btn-success btn-lg shadow-custom animate-float"
+                            data-bs-toggle="modal"
+                            data-bs-target="#requestPropertyModal"
+                        >
+                            <i className="fas fa-search me-2"></i>I Need Property
+                        </button>
+                    )}
                 </div>
             </div>
 
