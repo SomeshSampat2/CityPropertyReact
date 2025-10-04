@@ -2,10 +2,9 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { checkUserRole } from '../services/authService';
-import { db } from '../config/firebase';
-import { collection, getDocs, query, where, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
-import { addToFavorites, removeFromFavorites } from '../services/favoritesService';
+import { loadAllProperties, loadFavorites, toggleFavorite, addProperty, submitPropertyRequest, getPropertyTypeDisplay } from '../services/firebase';
 import { sampleImages } from '../utils/propertyTypeConfigs';
+import { serverTimestamp } from 'firebase/firestore';
 import '../styles/styles.css';
 
 
@@ -728,7 +727,7 @@ const Home = () => {
                 updatedAt: serverTimestamp()
             };
 
-            await addDoc(collection(db, 'properties'), propertyData);
+            await addProperty(propertyData);
 
             // Reset form and properly dispose modal
             setFormData({});
@@ -947,8 +946,8 @@ const Home = () => {
     // Load all properties once on mount
     useEffect(() => {
         if (isAuthenticated) {
-            loadAllProperties();
-            loadFavorites();
+            loadAllPropertiesData();
+            loadFavoritesData();
         }
     }, [isAuthenticated]);
 
@@ -960,39 +959,10 @@ const Home = () => {
         return allProperties.filter(property => property.propertyType === currentFilter);
     }, [allProperties, currentFilter]);
 
-    const loadAllProperties = async () => {
+    const loadAllPropertiesData = async () => {
         setLoading(true);
         try {
-            const queryRef = query(
-                collection(db, 'properties'),
-                where('isActive', '==', true)
-            );
-
-            const snapshot = await getDocs(queryRef);
-
-            if (snapshot.empty) {
-                setAllProperties([]);
-                setLoading(false);
-                return;
-            }
-
-            // Convert to array and sort by createdAt
-            const propertiesData = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                propertiesData.push({
-                    id: doc.id,
-                    ...data
-                });
-            });
-
-            // Sort by createdAt (newest first)
-            propertiesData.sort((a, b) => {
-                const aTime = a.createdAt ? (a.createdAt.seconds || a.createdAt.getTime?.() / 1000 || 0) : 0;
-                const bTime = b.createdAt ? (b.createdAt.seconds || b.createdAt.getTime?.() / 1000 || 0) : 0;
-                return bTime - aTime;
-            });
-
+            const propertiesData = await loadAllProperties();
             setAllProperties(propertiesData);
         } catch (error) {
             console.error('Error loading properties:', error);
@@ -1001,26 +971,18 @@ const Home = () => {
         }
     };
 
-    const loadFavorites = async () => {
+    const loadFavoritesData = async () => {
         if (!user) return;
 
         try {
-            const favoritesSnapshot = await getDocs(
-                collection(db, 'users', user.uid, 'favorites')
-            );
-
-            const favoriteIds = new Set();
-            favoritesSnapshot.forEach(doc => {
-                favoriteIds.add(doc.id);
-            });
-
+            const favoriteIds = await loadFavorites(user.uid);
             setFavorites(favoriteIds);
         } catch (error) {
             console.error('Error loading favorites:', error);
         }
     };
 
-    const toggleFavorite = async (propertyId) => {
+    const toggleFavoriteHandler = async (propertyId) => {
         if (!user) {
             alert('Please log in to manage favorites.');
             return;
@@ -1028,39 +990,23 @@ const Home = () => {
 
         try {
             const isFavorited = favorites.has(propertyId);
+            const newFavoriteStatus = await toggleFavorite(user.uid, propertyId, isFavorited);
 
-            if (isFavorited) {
-                // Remove from favorites
-                await removeFromFavorites(user.uid, propertyId);
-                setFavorites(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(propertyId);
-                    return newSet;
-                });
-            } else {
-                // Add to favorites
-                await addToFavorites(user.uid, propertyId);
-                setFavorites(prev => {
-                    const newSet = new Set(prev);
+            setFavorites(prev => {
+                const newSet = new Set(prev);
+                if (newFavoriteStatus) {
                     newSet.add(propertyId);
-                    return newSet;
-                });
-            }
+                } else {
+                    newSet.delete(propertyId);
+                }
+                return newSet;
+            });
         } catch (error) {
             console.error('Error toggling favorite:', error);
             alert('Error updating favorites. Please try again.');
         }
     };
 
-    const getPropertyTypeDisplay = (type) => {
-        const types = {
-            'residential': 'Residential',
-            'commercial': 'Commercial',
-            'industrial': 'Industrial',
-            'land': 'Land'
-        };
-        return types[type] || type || 'Property';
-    };
 
     // Handle property request form submission
     const handleRequestPropertySubmit = async (e) => {
@@ -1115,11 +1061,11 @@ const Home = () => {
             console.log('💾 Saving property request to Firestore for user:', user.uid);
 
             // Save to Firestore propertyRequests collection
-            const docRef = await addDoc(collection(db, 'propertyRequests'), completeFormData);
+            const requestId = await submitPropertyRequest(completeFormData);
 
-            console.log('✅ Property request saved with ID:', docRef.id);
+            console.log('✅ Property request saved with ID:', requestId);
             console.log('📊 Saved data:', {
-                id: docRef.id,
+                id: requestId,
                 userId: user.uid,
                 propertyType: completeFormData.propertyType,
                 area: completeFormData.area,
@@ -1143,7 +1089,7 @@ const Home = () => {
             }
 
             // Property request submitted successfully
-            console.log('✅ Property request submitted successfully with ID:', docRef.id);
+            console.log('✅ Property request submitted successfully with ID:', requestId);
 
             // Optional: You can add additional functionality here like:
             // - Sending notification to admins
@@ -1325,7 +1271,7 @@ const Home = () => {
                                                 className={`btn btn-sm ${favorites.has(property.id) ? 'btn-favorite favorite-btn animate-heartbeat' : 'btn-outline-danger favorite-btn'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    toggleFavorite(property.id);
+                                                    toggleFavoriteHandler(property.id);
                                                 }}
                                                 title={favorites.has(property.id) ? 'Remove from favorites' : 'Add to favorites'}
                                             >
