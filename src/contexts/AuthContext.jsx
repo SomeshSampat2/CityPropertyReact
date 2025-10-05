@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
     const [userData, setUserData] = useState(null);
     const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isBlocked, setIsBlocked] = useState(false);
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
@@ -28,6 +29,10 @@ export const AuthProvider = ({ children }) => {
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
                         setUserData(userData);
+
+                        // Check if user is blocked
+                        const blocked = userData.blocked === true;
+                        setIsBlocked(blocked);
 
                         // Check if user should be superadmin but role is not set correctly
                         const shouldBeSuperAdmin = isSuperAdminEmail(currentUser.email);
@@ -48,6 +53,7 @@ export const AuthProvider = ({ children }) => {
                         }
                     } else {
                         setUserData(null);
+                        setIsBlocked(false);
                     }
 
                     // Fetch and set user role
@@ -71,6 +77,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
                 setUserData(null);
                 setUserRole(null);
+                setIsBlocked(false);
             }
             setLoading(false);
         });
@@ -84,6 +91,7 @@ export const AuthProvider = ({ children }) => {
         userRole,
         loading,
         isAuthenticated: !!user,
+        isBlocked,
         hasCompleteProfile: userData && userData.name && userData.mobile,
         isSuperAdmin: userRole === 'superadmin',
         isAdmin: userRole === 'admin' || userRole === 'superadmin',
