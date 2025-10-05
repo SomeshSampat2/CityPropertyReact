@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db, auth } from '../config/firebase';
-import { collection, getDocs, doc, updateDoc, getDoc, query, where, orderBy } from 'firebase/firestore';
 import { checkUserRole } from '../services/authService';
+import { loadUsers, loadPropertyRequests, toggleUserBlock, updateUserRole, getUserData } from '../services/firebase/dashboardService';
 
 // Custom styles for dashboard
 const dashboardStyles = `
@@ -102,8 +101,8 @@ const DashboardComplete = () => {
         setLoading(true);
         try {
             await Promise.all([
-                loadUsers('all'),
-                loadPropertyRequests()
+                loadUsersData('all'),
+                loadPropertyRequestsData()
             ]);
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -112,90 +111,20 @@ const DashboardComplete = () => {
         }
     };
 
-    const loadUsers = async (filter = 'all') => {
+    const loadUsersData = async (filter = 'all') => {
         try {
-            const snapshot = await getDocs(collection(db, 'users'));
-            const usersData = [];
-
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                usersData.push({
-                    id: doc.id,
-                    ...data
-                });
-            });
-
-            // Filter users based on selection
-            let filteredUsers = usersData;
-            if (filter === 'active') {
-                filteredUsers = usersData.filter(user => !user.blocked);
-            } else if (filter === 'blocked') {
-                filteredUsers = usersData.filter(user => user.blocked === true);
-            }
-
-            // Sort by creation date (newest first)
-            filteredUsers.sort((a, b) => {
-                const dateA = a.createdAt ? a.createdAt.toDate() : new Date(0);
-                const dateB = b.createdAt ? b.createdAt.toDate() : new Date(0);
-                return dateB - dateA;
-            });
-
+            console.log('Loading users with filter:', filter);
+            const filteredUsers = await loadUsers(filter);
             setUsers(filteredUsers);
         } catch (error) {
             console.error('Error loading users:', error);
         }
     };
 
-    const loadPropertyRequests = async () => {
+    const loadPropertyRequestsData = async () => {
         try {
-            const requestsSnapshot = await getDocs(
-                query(collection(db, 'propertyRequests'), orderBy('createdAt', 'desc'))
-            );
-
-            if (requestsSnapshot.empty) {
-                setPropertyRequests([]);
-                return;
-            }
-
-            // Get all unique user IDs from requests
-            const userIds = new Set();
-            requestsSnapshot.forEach(doc => {
-                const data = doc.data();
-                if (data.userId) {
-                    userIds.add(data.userId);
-                }
-            });
-
-            // Fetch user data for all user IDs
-            const userPromises = Array.from(userIds).map(userId =>
-                getDoc(doc(db, 'users', userId))
-            );
-
-            const userSnapshots = await Promise.all(userPromises);
-            const userMap = new Map();
-
-            userSnapshots.forEach(snapshot => {
-                if (snapshot.exists) {
-                    const data = snapshot.data();
-                    userMap.set(snapshot.id, data);
-                }
-            });
-
-            // Process requests with user data
-            const requestsData = [];
-            requestsSnapshot.forEach(doc => {
-                const data = doc.data();
-                const userData = userMap.get(data.userId) || {};
-
-                requestsData.push({
-                    id: doc.id,
-                    ...data,
-                    userName: userData.name || userData.email || 'Anonymous',
-                    userEmail: userData.email || 'N/A',
-                    userMobile: userData.mobile || 'Not available'
-                });
-            });
-
+            console.log('Loading property requests');
+            const requestsData = await loadPropertyRequests();
             setPropertyRequests(requestsData);
         } catch (error) {
             console.error('Error loading property requests:', error);
@@ -241,14 +170,15 @@ const DashboardComplete = () => {
         if (!confirm(confirmMessage)) return;
 
         try {
-            await updateDoc(doc(db, 'users', userId), {
-                blocked: !user.blocked,
-                updatedAt: new Date()
-            });
+            const result = await toggleUserBlock(userId);
 
-            console.log(`✅ User ${action}ed successfully`);
-            await loadUsers(currentFilter);
-            alert(`User ${action}ed successfully!`);
+            if (result.success) {
+                console.log(`✅ User ${action}ed successfully`);
+                await loadUsersData(currentFilter);
+                alert(`User ${action}ed successfully!`);
+            } else {
+                alert(`Error ${action}ing user. Please try again.`);
+            }
         } catch (error) {
             console.error(`Error ${action}ing user:`, error);
             alert(`Error ${action}ing user. Please try again.`);
@@ -273,15 +203,16 @@ const DashboardComplete = () => {
         if (!confirm(confirmMessage)) return;
 
         try {
-            await updateDoc(doc(db, 'users', selectedUser.id), {
-                role: newRole,
-                updatedAt: new Date()
-            });
+            const result = await updateUserRole(selectedUser.id, newRole);
 
-            console.log(`✅ User role changed to ${newRole} successfully`);
-            await loadUsers(currentFilter);
-            setShowRoleModal(false);
-            alert(`User role changed to ${newRole} successfully!`);
+            if (result.success) {
+                console.log(`✅ User role changed to ${newRole} successfully`);
+                await loadUsersData(currentFilter);
+                setShowRoleModal(false);
+                alert(`User role changed to ${newRole} successfully!`);
+            } else {
+                alert('Error changing user role. Please try again.');
+            }
         } catch (error) {
             console.error('Error changing user role:', error);
             alert('Error changing user role. Please try again.');
@@ -326,7 +257,7 @@ const DashboardComplete = () => {
                                 className={`btn ${currentFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
                                 onClick={() => {
                                     setCurrentFilter('all');
-                                    loadUsers('all');
+                                    loadUsersData('all');
                                 }}
                             >
                                 <i className="fas fa-users me-2"></i>All Users
@@ -335,7 +266,7 @@ const DashboardComplete = () => {
                                 className={`btn ${currentFilter === 'active' ? 'btn-success' : 'btn-outline-success'}`}
                                 onClick={() => {
                                     setCurrentFilter('active');
-                                    loadUsers('active');
+                                    loadUsersData('active');
                                 }}
                             >
                                 <i className="fas fa-check-circle me-2"></i>Active
@@ -344,7 +275,7 @@ const DashboardComplete = () => {
                                 className={`btn ${currentFilter === 'blocked' ? 'btn-danger' : 'btn-outline-danger'}`}
                                 onClick={() => {
                                     setCurrentFilter('blocked');
-                                    loadUsers('blocked');
+                                    loadUsersData('blocked');
                                 }}
                             >
                                 <i className="fas fa-ban me-2"></i>Blocked
