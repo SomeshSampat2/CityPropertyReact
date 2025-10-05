@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { addToFavorites, removeFromFavorites, isPropertyInFavorites } from '../services/favoritesService';
+import { loadPropertyDetails, getSampleImages, getLocationText, getPriceText, getPropertyTypeDisplay, generateShareMessage } from '../services/firebase/propertyDetailsService';
 import '../styles/styles.css';
 
 const PropertyDetails = () => {
@@ -34,17 +33,17 @@ const PropertyDetails = () => {
     // Load property details
     useEffect(() => {
         if (isAuthenticated && propertyId) {
-            loadPropertyDetails();
+            loadPropertyDetailsFromService();
             checkFavoriteStatus();
         }
     }, [isAuthenticated, propertyId]);
 
-    const loadPropertyDetails = async () => {
+    const loadPropertyDetailsFromService = async () => {
         setLoading(true);
         try {
-            const propertyDoc = await getDoc(doc(db, 'properties', propertyId));
-            if (propertyDoc.exists()) {
-                const propertyData = { id: propertyDoc.id, ...propertyDoc.data() };
+            const propertyData = await loadPropertyDetails(propertyId);
+
+            if (propertyData) {
                 setProperty(propertyData);
 
                 // Setup images
@@ -84,15 +83,6 @@ const PropertyDetails = () => {
         }
     };
 
-    const getSampleImages = () => {
-        return [
-            'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1605146769289-440113cc3d00?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1516156008625-3a9d6067fab5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ];
-    };
 
     const toggleFavorite = async () => {
         if (!user) {
@@ -146,7 +136,7 @@ const PropertyDetails = () => {
         if (!property) return;
 
         const shareableUrl = `${window.location.origin}/property-details?id=${property.id}&shared=true`;
-        const message = `🏠 Check out this amazing property!\n\n${property.name}\n📍 ${getLocationText()}\n💰 ${getPriceText()}\n\nView full details: ${shareableUrl}`;
+        const message = generateShareMessage(property, shareableUrl);
 
         switch (platform) {
             case 'whatsapp':
@@ -164,37 +154,6 @@ const PropertyDetails = () => {
         }
     };
 
-    const getLocationText = () => {
-        if (!property) return '';
-        if (property.buildingName && property.locationDetails) {
-            return `${property.buildingName}, ${property.locationDetails}`;
-        } else if (property.buildingName) {
-            return property.buildingName;
-        } else if (property.locationDetails) {
-            return property.locationDetails;
-        } else if (property.address) {
-            return property.address;
-        } else if (property.location) {
-            return property.location;
-        }
-        return 'Location not specified';
-    };
-
-    const getPriceText = () => {
-        if (!property) return '';
-        const listingType = property.listingType || 'rent';
-        return listingType === 'rent' ? `Rs. ${property.price}/month` : `Rs. ${property.price}`;
-    };
-
-    const getPropertyTypeDisplay = (type) => {
-        const types = {
-            'residential': 'Residential',
-            'commercial': 'Commercial',
-            'industrial': 'Industrial',
-            'land': 'Land'
-        };
-        return types[type] || type || 'Property';
-    };
 
     if (loading) {
         return (
