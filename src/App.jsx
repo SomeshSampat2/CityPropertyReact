@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
@@ -12,10 +12,23 @@ import MyProperties from './components/MyProperties';
 import Requests from './components/Requests';
 import Dashboard from './components/DashboardComplete';
 import PropertyDetails from './components/PropertyDetails';
+import BlockedUserOverlay from './components/BlockedUserOverlay';
+import { auth } from './config/firebase';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 const AppContent = () => {
-    const { user, loading } = useAuth();
+    const { user, loading, isBlocked, isAuthenticated } = useAuth();
+    const location = useLocation();
+
+    // Handle logout for blocked users
+    const handleLogout = async () => {
+        try {
+            await auth.signOut();
+            // The AuthContext will handle the state changes
+        } catch (error) {
+            console.error('Error during logout:', error);
+        }
+    };
 
     if (loading) {
         return (
@@ -23,6 +36,16 @@ const AppContent = () => {
                 <div className="spinner-border text-primary" role="status">
                     <span className="visually-hidden">Loading...</span>
                 </div>
+            </div>
+        );
+    }
+
+    // Show blocked overlay if user is blocked and not on dashboard
+    // Dashboard is excluded because admins need to access it to unblock users
+    if (isAuthenticated && isBlocked && !location.pathname.endsWith('/dashboard')) {
+        return (
+            <div className="app-container">
+                <BlockedUserOverlay onLogout={handleLogout} />
             </div>
         );
     }

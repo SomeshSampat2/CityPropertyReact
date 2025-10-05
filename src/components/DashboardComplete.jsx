@@ -160,7 +160,7 @@ const DashboardComplete = () => {
         }
     };
 
-    const toggleUserBlock = async (userId) => {
+    const handleToggleUserBlock = async (userId) => {
         const user = users.find(u => u.id === userId);
         if (!user) return;
 
@@ -170,13 +170,16 @@ const DashboardComplete = () => {
         if (!confirm(confirmMessage)) return;
 
         try {
+            console.log(`Attempting to ${action} user:`, userId);
             const result = await toggleUserBlock(userId);
+            console.log('Toggle block result:', result);
 
-            if (result.success) {
+            if (result && result.success) {
                 console.log(`✅ User ${action}ed successfully`);
                 await loadUsersData(currentFilter);
                 alert(`User ${action}ed successfully!`);
             } else {
+                console.error('Toggle block returned false or undefined result:', result);
                 alert(`Error ${action}ing user. Please try again.`);
             }
         } catch (error) {
@@ -352,7 +355,7 @@ const DashboardComplete = () => {
                                                             </button>
                                                             <button
                                                                 className={`btn btn-outline-${user.blocked ? 'success' : 'danger'} btn-sm`}
-                                                                onClick={() => toggleUserBlock(user.id)}
+                                                                onClick={() => handleToggleUserBlock(user.id)}
                                                                 title={`${user.blocked ? 'Unblock' : 'Block'} User`}
                                                             >
                                                                 <i className={`fas fa-${user.blocked ? 'check' : 'ban'}`}></i>
@@ -538,7 +541,7 @@ const DashboardComplete = () => {
                                     type="button"
                                     className={`btn ${selectedUser.blocked ? 'btn-success' : 'btn-warning'}`}
                                     onClick={() => {
-                                        toggleUserBlock(selectedUser.id);
+                                        handleToggleUserBlock(selectedUser.id);
                                         setShowUserModal(false);
                                     }}
                                 >
