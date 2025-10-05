@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserFavorites } from '../services/favoritesService';
+import { getUserFavorites, removeFromFavorites, toggleFavorite } from '../services/favoritesService';
 import { propertyTypeConfigs } from '../utils/propertyTypeConfigs';
 import PropertyCard from './PropertyCard';
 
@@ -57,10 +57,45 @@ const Favorites = () => {
         }
     };
 
-    const handleRemoveFavorite = useCallback((propertyId) => {
-        setFavorites(prev => prev.filter(property => property.id !== propertyId));
-        // The filtered favorites will be updated automatically via useEffect
-    }, []);
+    const handleRemoveFavorite = useCallback(async (propertyId) => {
+        if (!user) return;
+
+        try {
+            // Remove from Firebase first
+            await removeFromFavorites(user.uid, propertyId);
+
+            // Update local state
+            setFavorites(prev => prev.filter(property => property.id !== propertyId));
+            // The filtered favorites will be updated automatically via useEffect
+        } catch (error) {
+            console.error('Error removing favorite:', error);
+            alert('Error removing favorite. Please try again.');
+        }
+    }, [user]);
+
+    const handleToggleFavorite = useCallback(async (propertyId, isCurrentlyFavorited) => {
+        if (!user) {
+            alert('Please log in to manage favorites.');
+            return;
+        }
+
+        try {
+            const newFavoriteStatus = await toggleFavorite(user.uid, propertyId, isCurrentlyFavorited);
+
+            // Update local state based on the new status
+            if (newFavoriteStatus) {
+                // If it's now favorited, we would need to reload or handle differently
+                // For now, we'll just refresh the favorites list
+                loadFavorites();
+            } else {
+                // If it's no longer favorited, remove from local state
+                setFavorites(prev => prev.filter(property => property.id !== propertyId));
+            }
+        } catch (error) {
+            console.error('Error toggling favorite:', error);
+            alert('Error updating favorites. Please try again.');
+        }
+    }, [user]);
 
     const handleFilterChange = (filterType) => {
         setCurrentFilter(filterType);

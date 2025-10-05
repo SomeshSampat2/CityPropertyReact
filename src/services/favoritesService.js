@@ -1,6 +1,12 @@
 import { collection, getDocs, doc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
+/**
+ * Favorites Service
+ * Handles all Firebase operations related to user favorites
+ * Provides clean separation between UI and Firebase operations
+ */
+
 // Get user's favorite properties
 export const getUserFavorites = async (userId) => {
     try {
@@ -102,6 +108,24 @@ export const addToFavorites = async (userId, propertyId) => {
         return true;
     } catch (error) {
         console.error('Error adding to favorites:', error);
+        throw error;
+    }
+};
+
+// Toggle favorite status for a property (add or remove)
+export const toggleFavorite = async (userId, propertyId, isCurrentlyFavorited) => {
+    try {
+        if (isCurrentlyFavorited) {
+            // Remove from favorites
+            await removeFromFavorites(userId, propertyId);
+            return false; // No longer favorited
+        } else {
+            // Add to favorites
+            await addToFavorites(userId, propertyId);
+            return true; // Now favorited
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
         throw error;
     }
 };

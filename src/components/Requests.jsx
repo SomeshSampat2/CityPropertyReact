@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import { collection, getDocs, getDoc, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { checkUserRole } from '../services/authService';
+import { loadRoleRequests, processRoleRequest } from '../services/firebase/requestsService';
 
 const Requests = () => {
     const navigate = useNavigate();
@@ -48,68 +47,8 @@ const Requests = () => {
     const loadRequests = async (filter = 'pending') => {
         setLoading(true);
         try {
-            // Build query based on filter
-            let queryRef = collection(db, 'roleRequests');
-            if (filter !== 'all') {
-                queryRef = query(queryRef, where('status', '==', filter));
-            }
-
-            const snapshot = await getDocs(queryRef);
-
-            if (snapshot.empty) {
-                setRequests([]);
-                setLoading(false);
-                return;
-            }
-
-            // Convert to array and sort by createdAt in JavaScript
-            const requestsData = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                requestsData.push({
-                    id: doc.id,
-                    ...data
-                });
-            });
-
-            // Sort by createdAt (newest first)
-            requestsData.sort((a, b) => {
-                const aTime = a.createdAt ? (a.createdAt.seconds || a.createdAt.getTime?.() / 1000 || 0) : 0;
-                const bTime = b.createdAt ? (b.createdAt.seconds || b.createdAt.getTime?.() / 1000 || 0) : 0;
-                return bTime - aTime;
-            });
-
-            // Get all unique user IDs to batch fetch user data
-            const userIds = [...new Set(requestsData.map(request => request.userId).filter(id => id))];
-            const userDataMap = {};
-
-            console.log('Found user IDs:', userIds);
-            console.log('Total requests:', requestsData.length);
-
-            // Fetch user data for all requesters
-            for (const userId of userIds) {
-                try {
-                    console.log('Fetching user data for:', userId);
-                    const userDoc = await getDoc(doc(db, 'users', userId));
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        console.log('Found user data:', userData);
-                        userDataMap[userId] = userData;
-                    } else {
-                        console.log('User document not found for:', userId);
-                    }
-                } catch (error) {
-                    console.error(`Error fetching user data for ${userId}:`, error);
-                    userDataMap[userId] = { name: 'Unknown User', email: 'unknown@example.com', role: 'user' };
-                }
-            }
-
-            // Add user data to requests
-            const requestsWithUserData = requestsData.map(request => ({
-                ...request,
-                userData: userDataMap[request.userId] || { name: 'Unknown User', email: 'unknown@example.com', role: 'user' }
-            }));
-
+            console.log('Loading requests with filter:', filter);
+            const requestsWithUserData = await loadRoleRequests(filter);
             setRequests(requestsWithUserData);
         } catch (error) {
             console.error('Error loading requests:', error);
@@ -148,43 +87,23 @@ const Requests = () => {
     const processRequest = async (requestId, newStatus) => {
         try {
             console.log('Processing request:', requestId, newStatus);
-            const request = requests.find(r => r.id === requestId);
-            if (!request) {
-                console.error('Request not found:', requestId);
-                alert('Request not found.');
-                return;
+
+            // Process the request using service function
+            const result = await processRoleRequest(requestId, newStatus, user?.uid);
+
+            if (result.success) {
+                // Reload requests
+                console.log('Reloading requests...');
+                await loadRequests(currentFilter);
+
+                // Close modal
+                setShowRequestModal(false);
+
+                const action = newStatus === 'approved' ? 'approved' : 'rejected';
+                alert(`Request ${action} successfully!`);
+            } else {
+                alert('Error processing request. Please try again.');
             }
-
-            console.log('Found request:', request);
-
-            // Update request status
-            console.log('Updating request status...');
-            await updateDoc(doc(db, 'roleRequests', requestId), {
-                status: newStatus,
-                processedAt: new Date(),
-                processedBy: user?.uid
-            });
-            console.log('Request status updated successfully');
-
-            // If approved, update user's role
-            if (newStatus === 'approved') {
-                console.log('Updating user role...');
-                await updateDoc(doc(db, 'users', request.userId), {
-                    role: request.requestedRole,
-                    updatedAt: new Date()
-                });
-                console.log('User role updated successfully');
-            }
-
-            // Reload requests
-            console.log('Reloading requests...');
-            await loadRequests(currentFilter);
-
-            // Close modal
-            setShowRequestModal(false);
-
-            const action = newStatus === 'approved' ? 'approved' : 'rejected';
-            alert(`Request ${action} successfully!`);
 
         } catch (error) {
             console.error('Error processing request:', error);

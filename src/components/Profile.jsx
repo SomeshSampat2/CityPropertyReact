@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { signOutUser } from '../services/authService';
+import { fetchPendingRequests, updateUserProfile, submitRoleRequest, checkExistingRequest } from '../services/firebase/profileService';
 
 const Profile = () => {
     const navigate = useNavigate();
@@ -24,7 +23,7 @@ const Profile = () => {
         const fetchUserData = async () => {
             if (user && userData) {
                 setCurrentRole(userData.role || 'user');
-                await fetchPendingRequests();
+                await fetchPendingRequestsData();
                 setLoading(false);
             }
         };
@@ -34,20 +33,11 @@ const Profile = () => {
         }
     }, [user, userData]);
 
-    const fetchPendingRequests = async () => {
+    const fetchPendingRequestsData = async () => {
         if (!user) return;
 
         try {
-            const q = query(
-                collection(db, 'roleRequests'),
-                where('userId', '==', user.uid),
-                where('status', '==', 'pending')
-            );
-            const querySnapshot = await getDocs(q);
-            const requests = [];
-            querySnapshot.forEach((doc) => {
-                requests.push(doc.data().requestedRole);
-            });
+            const requests = await fetchPendingRequests(user.uid);
             setPendingRequests(requests);
         } catch (error) {
             console.error('Error fetching pending requests:', error);
@@ -62,12 +52,11 @@ const Profile = () => {
             const formData = new FormData(e.target);
             const profileData = {
                 name: formData.get('name') || '',
-                mobile: formData.get('mobile') || '',
-                updatedAt: new Date()
+                mobile: formData.get('mobile') || ''
             };
 
             if (user) {
-                await updateDoc(doc(db, 'users', user.uid), profileData);
+                await updateUserProfile(user.uid, profileData);
                 console.log('✅ Profile saved successfully');
                 // Show success message
                 alert('Profile updated successfully!');
@@ -84,20 +73,15 @@ const Profile = () => {
         if (!user) return;
 
         try {
-            // Check for existing pending request
-            if (pendingRequests.includes(requestedRole)) {
+            // Check for existing pending request using service function
+            const hasExistingRequest = await checkExistingRequest(user.uid, requestedRole);
+            if (hasExistingRequest) {
                 alert('You already have a pending request for this role.');
                 return;
             }
 
-            // Add the role request
-            await addDoc(collection(db, 'roleRequests'), {
-                userId: user.uid,
-                requestedRole: requestedRole,
-                status: 'pending',
-                createdAt: new Date(),
-                updatedAt: new Date()
-            });
+            // Submit the role request
+            await submitRoleRequest(user.uid, requestedRole);
 
             console.log('✅ Role request submitted successfully');
             alert(`Your request for ${requestedRole} role has been submitted and is pending approval.`);
