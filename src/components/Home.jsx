@@ -53,6 +53,7 @@ const propertyTypeConfigs = {
                 section: "Configuration & Area",
                 icon: "fas fa-ruler-combined",
                     fields: [
+                        { type: "select", id: "bhkConfig", label: "BHK Configuration", options: ["1 BHK", "1.5 BHK", "2 BHK", "2.5 BHK", "3 BHK", "3.5 BHK", "4 BHK", "4+ BHK"], default: "2 BHK", required: true },
                         { type: "number", id: "builtUpArea", label: "Built Up Area (sq ft)", placeholder: "e.g., 1200", required: true },
                         { type: "number", id: "carpetArea", label: "Carpet Area (sq ft)", placeholder: "e.g., 1000" },
                         { type: "select", id: "propertyAge", label: "Age of Property", options: ["Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"], default: "Less than 1 year" },

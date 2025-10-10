@@ -5,6 +5,52 @@ import { addToFavorites, removeFromFavorites, isPropertyInFavorites } from '../s
 import { loadPropertyDetails, getSampleImages, getLocationText, getPriceText, getPropertyTypeDisplay, generateShareMessage } from '../services/firebase/propertyDetailsService';
 import '../styles/styles.css';
 
+// Helper function to conditionally render fields - hide if empty/null/undefined
+const renderField = (value, formatter = null) => {
+    if (value === null || value === undefined || value === '') return null;
+
+    if (formatter && typeof formatter === 'function') {
+        return formatter(value);
+    }
+
+    return value;
+};
+
+// Helper function to render field with label in a consistent format
+const renderFieldWithLabel = (label, value, formatter = null, unit = '') => {
+    const displayValue = renderField(value, formatter);
+    if (displayValue === null) return null;
+
+    return (
+        <div className="col-md-6">
+            <small className="text-muted">{label}:</small>
+            <div className="fw-bold">{displayValue}{unit}</div>
+        </div>
+    );
+};
+
+// Helper function to check if a section has any visible fields
+const hasVisibleFields = (fields) => {
+    return fields.some(field => renderField(field) !== null);
+};
+
+// Helper function to render a section with conditional visibility
+const renderSection = (title, icon, content, fields = []) => {
+    // If fields array is provided, check if any fields are visible
+    if (fields.length > 0 && !hasVisibleFields(fields)) {
+        return null;
+    }
+
+    return (
+        <div className="mb-3">
+            <h6 className="text-primary mb-2">
+                <i className={`${icon} me-2`}></i>{title}
+            </h6>
+            {content}
+        </div>
+    );
+};
+
 const PropertyDetails = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
@@ -245,7 +291,7 @@ const PropertyDetails = () => {
                                 <div>
                                     <h1 className="h2 fw-bold text-gradient mb-2">{property.name}</h1>
                                     <p className="text-muted mb-0">
-                                        <i className="fas fa-map-marker-alt me-2"></i>{getLocationText()}
+                                        <i className="fas fa-map-marker-alt me-2"></i>{getLocationText(property)}
                                     </p>
                                 </div>
                                 <div className="text-end d-flex flex-column align-items-end">
@@ -268,7 +314,7 @@ const PropertyDetails = () => {
                                         </button>
                                     </div>
                                     <div>
-                                        <h3 className="text-gradient mb-0">{getPriceText()}</h3>
+                                        <h3 className="text-gradient mb-0">{getPriceText(property)}</h3>
                                     </div>
                                 </div>
                             </div>
@@ -277,34 +323,42 @@ const PropertyDetails = () => {
                             <div className="row g-3 mb-4">
                                 {property.propertyType === 'residential' && (
                                     <>
+                                        {renderField(property.bhkConfig) && (
                                         <div className="col-6 col-md-3">
                                             <div className="feature-card text-center p-3">
                                                 <i className="fas fa-home text-primary mb-2"></i>
-                                                <h5 className="mb-0">{property.bhkConfig || 'N/A'}</h5>
+                                                    <h5 className="mb-0">{property.bhkConfig}</h5>
                                                 <small className="text-muted">BHK</small>
                                             </div>
                                         </div>
+                                        )}
+                                        {renderField(property.builtUpArea) && (
                                         <div className="col-6 col-md-3">
                                             <div className="feature-card text-center p-3">
                                                 <i className="fas fa-ruler-combined text-primary mb-2"></i>
-                                                <h5 className="mb-0">{property.builtUpArea ? `${property.builtUpArea} sq ft` : 'N/A'}</h5>
+                                                    <h5 className="mb-0">{property.builtUpArea} sq ft</h5>
                                                 <small className="text-muted">Built-up Area</small>
                                             </div>
                                         </div>
+                                        )}
+                                        {renderField(property.bathrooms) && (
                                         <div className="col-6 col-md-3">
                                             <div className="feature-card text-center p-3">
                                                 <i className="fas fa-bath text-primary mb-2"></i>
-                                                <h5 className="mb-0">{property.bathrooms || 'N/A'}</h5>
+                                                    <h5 className="mb-0">{property.bathrooms}</h5>
                                                 <small className="text-muted">Bathrooms</small>
                                             </div>
                                         </div>
+                                        )}
+                                        {renderField(property.balconies) && (
                                         <div className="col-6 col-md-3">
                                             <div className="feature-card text-center p-3">
                                                 <i className="fas fa-building text-primary mb-2"></i>
-                                                <h5 className="mb-0">{property.balconies || 'N/A'}</h5>
+                                                    <h5 className="mb-0">{property.balconies}</h5>
                                                 <small className="text-muted">Balconies</small>
                                             </div>
                                         </div>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -339,406 +393,244 @@ const PropertyDetails = () => {
                                 <h4 className="h5 mb-3">Property Details</h4>
 
                                 {/* Type & Category (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-tags me-2"></i>Type & Category</h6>
+                                {renderSection(
+                                    'Type & Category',
+                                    'fas fa-tags',
                                     <div className="row g-2">
                                         <div className="col-md-6">
                                             <small className="text-muted">Property Type:</small>
                                             <div className="fw-bold">{getPropertyTypeDisplay(property.propertyType)}</div>
                                         </div>
-                                        {property.propertyType === 'residential' && (
-                                            <div className="col-md-6">
-                                                <small className="text-muted">BHK Configuration:</small>
-                                                <div className="fw-bold">{property.bhkConfig || 'N/A'}</div>
-                                            </div>
-                                        )}
-                                        {property.propertyType === 'commercial' && (
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Commercial Type:</small>
-                                                <div className="fw-bold">{property.commercialType || 'N/A'}</div>
-                                            </div>
-                                        )}
-                                        {property.propertyType === 'industrial' && (
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Industrial Type:</small>
-                                                <div className="fw-bold">{property.industrialType || 'N/A'}</div>
-                                            </div>
-                                        )}
-                                        {property.propertyType === 'land' && (
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Land Type:</small>
-                                                <div className="fw-bold">{property.landType || 'N/A'}</div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('BHK Configuration', property.bhkConfig)}
+                                        {renderFieldWithLabel('Commercial Type', property.commercialType)}
+                                        {renderFieldWithLabel('Industrial Type', property.industrialType)}
+                                        {renderFieldWithLabel('Land Type', property.landType)}
+                                    </div>,
+                                    [property.bhkConfig, property.commercialType, property.industrialType, property.landType]
+                                )}
 
                                 {/* Location & Building (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-map-marker-alt me-2"></i>Location & Building</h6>
+                                {renderSection(
+                                    'Location & Building',
+                                    'fas fa-map-marker-alt',
                                     <div className="row g-2">
-                                        <div className="col-12">
-                                            <small className="text-muted">Building/Project/Society Name:</small>
-                                            <div className="fw-bold">{property.buildingName || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-12">
-                                            <small className="text-muted">Locality:</small>
-                                            <div className="fw-bold">{property.locality || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Zone Type:</small>
-                                            <div className="fw-bold">{property.zoneType || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Location Hub:</small>
-                                            <div className="fw-bold">{property.locationHub || 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Building/Project/Society Name', property.buildingName)}
+                                        {renderFieldWithLabel('Locality', property.locality)}
+                                        {renderFieldWithLabel('Zone Type', property.zoneType)}
+                                        {renderFieldWithLabel('Location Hub', property.locationHub)}
+                                    </div>,
+                                    [property.buildingName, property.locality, property.zoneType, property.locationHub]
+                                )}
 
                                 {/* Status & Availability (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-clock me-2"></i>Status & Availability</h6>
+                                {renderSection(
+                                    'Status & Availability',
+                                    'fas fa-clock',
                                     <div className="row g-2">
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Possession Status:</small>
-                                            <div className="fw-bold">{property.possessionStatus || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Available From:</small>
-                                            <div className="fw-bold">{property.availableFrom || 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Possession Status', property.possessionStatus)}
+                                        {renderFieldWithLabel('Available From', property.availableFrom)}
+                                    </div>,
+                                    [property.possessionStatus, property.availableFrom]
+                                )}
 
                                 {/* Property & Legal (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-gavel me-2"></i>Property & Legal</h6>
+                                {renderSection(
+                                    'Property & Legal',
+                                    'fas fa-gavel',
                                     <div className="row g-2">
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Property Condition:</small>
-                                            <div className="fw-bold">{property.propertyCondition || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Ownership:</small>
-                                            <div className="fw-bold">{property.ownership || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Plot Area:</small>
-                                            <div className="fw-bold">{property.plotArea ? `${property.plotArea} sq ft` : 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Built-up Area:</small>
-                                            <div className="fw-bold">{property.builtUpArea ? `${property.builtUpArea} sq ft` : 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Carpet Area:</small>
-                                            <div className="fw-bold">{property.carpetArea ? `${property.carpetArea} sq ft` : 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Total Construction Area:</small>
-                                            <div className="fw-bold">{property.totalConstructionArea ? `${property.totalConstructionArea} sq ft` : 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Frontage:</small>
-                                            <div className="fw-bold">{property.frontage ? `${property.frontage} ft` : 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Road Access:</small>
-                                            <div className="fw-bold">{property.roadAccess ? `${property.roadAccess} ft` : 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Property Condition', property.propertyCondition)}
+                                        {renderFieldWithLabel('Ownership', property.ownership)}
+                                        {renderFieldWithLabel('Plot Area', property.plotArea, null, ' sq ft')}
+                                        {renderFieldWithLabel('Built-up Area', property.builtUpArea, null, ' sq ft')}
+                                        {renderFieldWithLabel('Carpet Area', property.carpetArea, null, ' sq ft')}
+                                        {renderFieldWithLabel('Total Construction Area', property.totalConstructionArea, null, ' sq ft')}
+                                        {renderFieldWithLabel('Frontage', property.frontage, null, ' ft')}
+                                        {renderFieldWithLabel('Road Access', property.roadAccess, null, ' ft')}
+                                    </div>,
+                                    [property.propertyCondition, property.ownership, property.plotArea, property.builtUpArea, property.carpetArea, property.totalConstructionArea, property.frontage, property.roadAccess]
+                                )}
 
                                 {/* Industrial/Shed Specific (Industrial Only) */}
-                                {property.propertyType === 'industrial' && (
-                                    <div className="mb-3">
-                                        <h6 className="text-primary mb-2"><i className="fas fa-cog me-2"></i>Industrial/Shed Specific</h6>
+                                {property.propertyType === 'industrial' && renderSection(
+                                    'Industrial/Shed Specific',
+                                    'fas fa-cog',
                                         <div className="row g-2">
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Shed Height:</small>
-                                                <div className="fw-bold">{property.shedHeight ? `${property.shedHeight} ft` : 'N/A'}</div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Shed Side Wall Height:</small>
-                                                <div className="fw-bold">{property.shedSideWallHeight ? `${property.shedSideWallHeight} ft` : 'N/A'}</div>
-                                            </div>
-                                            <div className="col-12">
-                                                <small className="text-muted">Plot Dimensions:</small>
-                                                <div className="fw-bold">{property.plotDimensions || 'N/A'}</div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Shed Built-up Area:</small>
-                                                <div className="fw-bold">{property.shedBuiltUpArea ? `${property.shedBuiltUpArea} sq ft` : 'N/A'}</div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Built-up Construction Area:</small>
-                                                <div className="fw-bold">{property.builtUpConstructionArea ? `${property.builtUpConstructionArea} sq ft` : 'N/A'}</div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Electricity Load:</small>
-                                                <div className="fw-bold">{property.electricityLoad || 'N/A'}</div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Water Available:</small>
-                                                <div className="fw-bold">{property.waterAvailable || 'N/A'}</div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Pre-leased:</small>
-                                                <div className="fw-bold">{property.preLeased || 'N/A'}</div>
-                                            </div>
-                                            <div className="col-md-6">
-                                                <small className="text-muted">Pre-rented:</small>
-                                                <div className="fw-bold">{property.preRented || 'N/A'}</div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                        {renderFieldWithLabel('Shed Height', property.shedHeight, null, ' ft')}
+                                        {renderFieldWithLabel('Shed Side Wall Height', property.shedSideWallHeight, null, ' ft')}
+                                        {renderFieldWithLabel('Plot Dimensions', property.plotDimensions)}
+                                        {renderFieldWithLabel('Shed Built-up Area', property.shedBuiltUpArea, null, ' sq ft')}
+                                        {renderFieldWithLabel('Built-up Construction Area', property.builtUpConstructionArea, null, ' sq ft')}
+                                        {renderFieldWithLabel('Electricity Load', property.electricityLoad)}
+                                        {renderFieldWithLabel('Water Available', property.waterAvailable)}
+                                        {renderFieldWithLabel('Pre-leased', property.preLeased)}
+                                        {renderFieldWithLabel('Pre-rented', property.preRented)}
+                                    </div>,
+                                    [property.shedHeight, property.shedSideWallHeight, property.plotDimensions, property.shedBuiltUpArea, property.builtUpConstructionArea, property.electricityLoad, property.waterAvailable, property.preLeased, property.preRented]
                                 )}
 
                                 {/* Lease & Financials (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-money-bill-wave me-2"></i>Lease & Financials</h6>
+                                {renderSection(
+                                    'Lease & Financials',
+                                    'fas fa-money-bill-wave',
                                     <div className="row g-2">
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Expected Rent:</small>
-                                            <div className="fw-bold">{property.expectedRent ? `₹${property.expectedRent}` : 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Rent Negotiable:</small>
-                                            <div className="fw-bold">{property.rentNegotiable || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Security Deposit:</small>
-                                            <div className="fw-bold">{property.securityDeposit || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Rent Increase:</small>
-                                            <div className="fw-bold">{property.rentIncrease || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Lock-in Period:</small>
-                                            <div className="fw-bold">{property.lockInPeriod || 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Expected Rent', property.expectedRent, (val) => `₹${val}`)}
+                                        {renderFieldWithLabel('Rent Negotiable', property.rentNegotiable)}
+                                        {renderFieldWithLabel('Security Deposit', property.securityDeposit)}
+                                        {renderFieldWithLabel('Rent Increase', property.rentIncrease)}
+                                        {renderFieldWithLabel('Lock-in Period', property.lockInPeriod)}
+                                    </div>,
+                                    [property.expectedRent, property.rentNegotiable, property.securityDeposit, property.rentIncrease, property.lockInPeriod]
+                                )}
 
                                 {/* Charges & Inclusions (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-calculator me-2"></i>Charges & Inclusions</h6>
+                                {renderSection(
+                                    'Charges & Inclusions',
+                                    'fas fa-calculator',
                                     <div className="row g-2">
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Damp UPS Included:</small>
-                                            <div className="fw-bold">{property.dampUpsIncluded || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Electricity Included:</small>
-                                            <div className="fw-bold">{property.electricityIncluded || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Water Charges Included:</small>
-                                            <div className="fw-bold">{property.waterChargesIncluded || 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Damp UPS Included', property.dampUpsIncluded)}
+                                        {renderFieldWithLabel('Electricity Included', property.electricityIncluded)}
+                                        {renderFieldWithLabel('Water Charges Included', property.waterChargesIncluded)}
+                                    </div>,
+                                    [property.dampUpsIncluded, property.electricityIncluded, property.waterChargesIncluded]
+                                )}
 
                                 {/* Floors & Elevation (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-building me-2"></i>Floors & Elevation</h6>
+                                {renderSection(
+                                    'Floors & Elevation',
+                                    'fas fa-building',
                                     <div className="row g-2">
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Your Floor:</small>
-                                            <div className="fw-bold">{property.yourFloor || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Total Floors:</small>
-                                            <div className="fw-bold">{property.totalFloors || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Staircases:</small>
-                                            <div className="fw-bold">{property.staircases || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Passenger Lift:</small>
-                                            <div className="fw-bold">{property.passengerLift || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Service Lift:</small>
-                                            <div className="fw-bold">{property.serviceLift || 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Your Floor', property.yourFloor)}
+                                        {renderFieldWithLabel('Total Floors', property.totalFloors)}
+                                        {renderFieldWithLabel('Staircases', property.staircases)}
+                                        {renderFieldWithLabel('Passenger Lift', property.passengerLift)}
+                                        {renderFieldWithLabel('Service Lift', property.serviceLift)}
+                                    </div>,
+                                    [property.yourFloor, property.totalFloors, property.staircases, property.passengerLift, property.serviceLift]
+                                )}
 
                                 {/* Parking & Washrooms (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-parking me-2"></i>Parking & Washrooms</h6>
+                                {renderSection(
+                                    'Parking & Washrooms',
+                                    'fas fa-parking',
                                     <div className="row g-2">
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Parking Type:</small>
-                                            <div className="fw-bold">{property.parkingType || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Washroom Type:</small>
-                                            <div className="fw-bold">{property.washroomType || 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Parking Type', property.parkingType)}
+                                        {renderFieldWithLabel('Washroom Type', property.washroomType)}
+                                    </div>,
+                                    [property.parkingType, property.washroomType]
+                                )}
 
                                 {/* Facing & Facilities (All Types) */}
-                                <div className="mb-3">
-                                    <h6 className="text-primary mb-2"><i className="fas fa-compass me-2"></i>Facing & Facilities</h6>
+                                {renderSection(
+                                    'Facing & Facilities',
+                                    'fas fa-compass',
                                     <div className="row g-2">
-                                        <div className="col-12">
-                                            <small className="text-muted">Rear Facing:</small>
-                                            <div className="fw-bold">{property.rearFacing || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Facing:</small>
-                                            <div className="fw-bold">{property.facing || 'N/A'}</div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <small className="text-muted">Road Facing:</small>
-                                            <div className="fw-bold">{property.roadFacing || 'N/A'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                        {renderFieldWithLabel('Rear Facing', property.rearFacing)}
+                                        {renderFieldWithLabel('Facing', property.facing)}
+                                        {renderFieldWithLabel('Road Facing', property.roadFacing)}
+                                    </div>,
+                                    [property.rearFacing, property.facing, property.roadFacing]
+                                )}
 
                                 {/* Residential Specific Fields */}
-                                {property.propertyType === 'residential' && (
+                                {property.propertyType === 'residential' && hasVisibleFields([
+                                    property.propertyAge, property.floorNumber, property.bathrooms, property.balconies, property.furnishing,
+                                    property.coveredParking, property.openParking, property.parkingCharges,
+                                    property.tenantType, property.petFriendly, property.maintenanceCharges,
+                                    property.servantRoom, property.amenitiesText,
+                                    property.residentsCount
+                                ]) && (
                                     <>
                                         {/* Configuration & Area (Residential) */}
-                                        <div className="mb-3">
-                                            <h6 className="text-primary mb-2"><i className="fas fa-ruler-combined me-2"></i>Configuration & Area</h6>
+                                        {renderSection(
+                                            'Configuration & Area',
+                                            'fas fa-ruler-combined',
                                             <div className="row g-2">
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Property Age:</small>
-                                                    <div className="fw-bold">{property.propertyAge || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Floor Number:</small>
-                                                    <div className="fw-bold">{property.floorNumber || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Bathrooms:</small>
-                                                    <div className="fw-bold">{property.bathrooms || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Balconies:</small>
-                                                    <div className="fw-bold">{property.balconies || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Furnishing:</small>
-                                                    <div className="fw-bold">{property.furnishing || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                {renderFieldWithLabel('Property Age', property.propertyAge)}
+                                                {renderFieldWithLabel('Floor Number', property.floorNumber)}
+                                                {renderFieldWithLabel('Bathrooms', property.bathrooms)}
+                                                {renderFieldWithLabel('Balconies', property.balconies)}
+                                                {renderFieldWithLabel('Furnishing', property.furnishing)}
+                                            </div>,
+                                            [property.propertyAge, property.floorNumber, property.bathrooms, property.balconies, property.furnishing]
+                                        )}
 
                                         {/* Parking & Accessibility (Residential) */}
-                                        <div className="mb-3">
-                                            <h6 className="text-primary mb-2"><i className="fas fa-parking me-2"></i>Parking & Accessibility</h6>
+                                        {renderSection(
+                                            'Parking & Accessibility',
+                                            'fas fa-parking',
                                             <div className="row g-2">
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Covered Parking:</small>
-                                                    <div className="fw-bold">{property.coveredParking || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Open Parking:</small>
-                                                    <div className="fw-bold">{property.openParking || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Parking Charges:</small>
-                                                    <div className="fw-bold">{property.parkingCharges || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                {renderFieldWithLabel('Covered Parking', property.coveredParking)}
+                                                {renderFieldWithLabel('Open Parking', property.openParking)}
+                                                {renderFieldWithLabel('Parking Charges', property.parkingCharges)}
+                                            </div>,
+                                            [property.coveredParking, property.openParking, property.parkingCharges]
+                                        )}
 
                                         {/* Tenancy Details (Residential) */}
-                                        <div className="mb-3">
-                                            <h6 className="text-primary mb-2"><i className="fas fa-users me-2"></i>Tenancy Details</h6>
+                                        {renderSection(
+                                            'Tenancy Details',
+                                            'fas fa-users',
                                             <div className="row g-2">
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Preferred Tenant:</small>
-                                                    <div className="fw-bold">{property.tenantType || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Pet Friendly:</small>
-                                                    <div className="fw-bold">{property.petFriendly || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Maintenance Charges:</small>
-                                                    <div className="fw-bold">{property.maintenanceCharges || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                {renderFieldWithLabel('Preferred Tenant', property.tenantType)}
+                                                {renderFieldWithLabel('Pet Friendly', property.petFriendly)}
+                                                {renderFieldWithLabel('Maintenance Charges', property.maintenanceCharges)}
+                                            </div>,
+                                            [property.tenantType, property.petFriendly, property.maintenanceCharges]
+                                        )}
 
                                         {/* Room & Facilities (Residential) */}
-                                        <div className="mb-3">
-                                            <h6 className="text-primary mb-2"><i className="fas fa-bed me-2"></i>Room & Facilities</h6>
+                                        {renderSection(
+                                            'Room & Facilities',
+                                            'fas fa-bed',
                                             <div className="row g-2">
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Servant Room:</small>
-                                                    <div className="fw-bold">{property.servantRoom || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-12">
-                                                    <small className="text-muted">Additional Amenities:</small>
-                                                    <div className="fw-bold">{property.amenitiesText || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                {renderFieldWithLabel('Servant Room', property.servantRoom)}
+                                                {renderFieldWithLabel('Additional Amenities', property.amenitiesText)}
+                                            </div>,
+                                            [property.servantRoom, property.amenitiesText]
+                                        )}
 
                                         {/* Residency & Location (Residential) */}
-                                        <div className="mb-3">
-                                            <h6 className="text-primary mb-2"><i className="fas fa-map-marker-alt me-2"></i>Residency & Location</h6>
+                                        {renderSection(
+                                            'Residency & Location',
+                                            'fas fa-map-marker-alt',
                                             <div className="row g-2">
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Current Residents:</small>
-                                                    <div className="fw-bold">{property.residentsCount || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                {renderFieldWithLabel('Current Residents', property.residentsCount)}
+                                            </div>,
+                                            [property.residentsCount]
+                                        )}
                                     </>
                                 )}
 
                                 {/* Commercial Specific Fields */}
-                                {property.propertyType === 'commercial' && (
+                                {property.propertyType === 'commercial' && hasVisibleFields([property.availableFrom]) && (
                                     <>
                                         {/* Status & Availability (Commercial) */}
-                                        <div className="mb-3">
-                                            <h6 className="text-primary mb-2"><i className="fas fa-clock me-2"></i>Status & Availability</h6>
+                                        {renderSection(
+                                            'Status & Availability',
+                                            'fas fa-clock',
                                             <div className="row g-2">
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Available From:</small>
-                                                    <div className="fw-bold">{property.availableFrom || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                {renderFieldWithLabel('Available From', property.availableFrom)}
+                                            </div>,
+                                            [property.availableFrom]
+                                        )}
                                     </>
                                 )}
 
                                 {/* Land Specific Fields */}
-                                {property.propertyType === 'land' && (
+                                {property.propertyType === 'land' && hasVisibleFields([property.areaAcres, property.landFacing, property.roadWidth, property.landStatus]) && (
                                     <>
                                         {/* Land Features (Land) */}
-                                        <div className="mb-3">
-                                            <h6 className="text-primary mb-2"><i className="fas fa-map me-2"></i>Land Features</h6>
+                                        {renderSection(
+                                            'Land Features',
+                                            'fas fa-map',
                                             <div className="row g-2">
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Area (Acres):</small>
-                                                    <div className="fw-bold">{property.areaAcres ? `${property.areaAcres} acres` : 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Land Facing:</small>
-                                                    <div className="fw-bold">{property.landFacing || 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Road Width:</small>
-                                                    <div className="fw-bold">{property.roadWidth ? `${property.roadWidth} ft` : 'N/A'}</div>
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <small className="text-muted">Land Status:</small>
-                                                    <div className="fw-bold">{property.landStatus || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                {renderFieldWithLabel('Area (Acres)', property.areaAcres, null, ' acres')}
+                                                {renderFieldWithLabel('Land Facing', property.landFacing)}
+                                                {renderFieldWithLabel('Road Width', property.roadWidth, null, ' ft')}
+                                                {renderFieldWithLabel('Land Status', property.landStatus)}
+                                            </div>,
+                                            [property.areaAcres, property.landFacing, property.roadWidth, property.landStatus]
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -796,12 +688,14 @@ const PropertyDetails = () => {
                                     <span className="text-muted">Property ID:</span>
                                     <span className="fw-bold">#{property.id?.substring(0, 8)?.toUpperCase()}</span>
                                 </div>
+                                {renderField(property.createdAt?.toDate?.()?.toLocaleDateString()) && (
                                 <div className="stat-item d-flex justify-content-between mb-2">
                                     <span className="text-muted">Listed:</span>
                                     <span className="fw-bold">
-                                        {property.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
+                                            {property.createdAt?.toDate?.()?.toLocaleDateString()}
                                     </span>
                                 </div>
+                                )}
                                 <div className="stat-item d-flex justify-content-between mb-2">
                                     <span className="text-muted">Views:</span>
                                     <span className="fw-bold">247</span>
@@ -873,9 +767,9 @@ const PropertyDetails = () => {
                                     <div className="property-share-preview p-3 bg-light rounded">
                                         <h6 className="mb-1">{property.name}</h6>
                                         <p className="text-muted mb-1">
-                                            <i className="fas fa-map-marker-alt me-1"></i>{getLocationText()}
+                                            <i className="fas fa-map-marker-alt me-1"></i>{getLocationText(property)}
                                         </p>
-                                        <p className="text-primary mb-0">{getPriceText()}</p>
+                                        <p className="text-primary mb-0">{getPriceText(property)}</p>
                                     </div>
                                 </div>
 
