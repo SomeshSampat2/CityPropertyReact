@@ -1086,31 +1086,60 @@ const Home = () => {
                 status: completeFormData.status
             });
 
-            // Close modal
-            const requestModal = window.bootstrap.Modal.getInstance(document.getElementById('requestPropertyModal'));
-            if (requestModal) {
-                requestModal.hide();
-            }
-
-            // Reset form
+            // Reset form and constraints first
             document.getElementById('request-property-form').reset();
-
-            // Clear budget field constraints
             const maxBudgetField = document.getElementById('max-budget');
             if (maxBudgetField) {
                 maxBudgetField.min = 0;
             }
 
-            // Property request submitted successfully
-            console.log('✅ Property request submitted successfully with ID:', requestId);
+            // Close modal properly (similar to handleFormSubmit)
+            const modalElement = document.getElementById('requestPropertyModal');
+            const requestModal = window.bootstrap.Modal.getInstance(modalElement);
 
-            // Optional: You can add additional functionality here like:
-            // - Sending notification to admins
-            // - Redirecting to a confirmation page
-            // - Updating UI to show request status
-            // - Logging analytics events
+            if (requestModal) {
+                // Hide the modal (let Bootstrap handle the closing animation)
+                requestModal.hide();
 
-            alert('Property request submitted successfully!');
+                // Listen for when the modal is fully hidden
+                const handleHidden = () => {
+                    // Now dispose the modal and clean up
+                    requestModal.dispose();
+
+                    // Remove any remaining backdrop elements
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => backdrop.remove());
+
+                    // Remove modal-open class from body
+                    document.body.classList.remove('modal-open');
+
+                    // Remove the event listener
+                    modalElement.removeEventListener('hidden.bs.modal', handleHidden);
+
+                    // Property request submitted successfully
+                    console.log('✅ Property request submitted successfully with ID:', requestId);
+
+                    // Show success message after modal is fully cleaned up
+                    alert('Property request submitted successfully!');
+
+                    // Refresh the page after successful submission
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 100);
+                };
+
+                // Add the event listener for when modal is hidden
+                modalElement.addEventListener('hidden.bs.modal', handleHidden);
+            } else {
+                // Fallback if modal instance doesn't exist
+                console.log('✅ Property request submitted successfully with ID:', requestId);
+                alert('Property request submitted successfully!');
+
+                // Refresh the page after successful submission (fallback)
+                setTimeout(() => {
+                    window.location.reload();
+                }, 100);
+            }
 
         } catch (error) {
             console.error('❌ Error submitting property request:', error);
