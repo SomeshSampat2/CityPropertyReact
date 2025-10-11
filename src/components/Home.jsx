@@ -442,13 +442,20 @@ const Home = () => {
 
     // Handle form input changes
     const handleInputChange = (e) => {
-        const { id, value, type, checked } = e.target;
+        const { id, name, value, type, checked } = e.target;
         if (type === 'checkbox') {
             setFormData(prev => ({
                 ...prev,
                 [id]: checked
             }));
+        } else if (type === 'radio') {
+            // For radio buttons, use the name attribute as the key
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
         } else {
+            // For other inputs, use the id as the key
             setFormData(prev => ({
                 ...prev,
                 [id]: value
@@ -730,7 +737,7 @@ const Home = () => {
 
             await addProperty(propertyData);
 
-            // Reset form and properly dispose modal
+            // Reset form and properly dispose modal first
             setFormData({});
             setAmenities([]);
             setSelectedPropertyType(null);
@@ -753,6 +760,11 @@ const Home = () => {
 
                     // Remove modal-open class from body
                     document.body.classList.remove('modal-open');
+
+                    // Refresh the properties list after modal is fully cleaned up
+                    setTimeout(() => {
+                        loadAllPropertiesData();
+                    }, 100);
 
                     // Remove the event listener
                     modalElement.removeEventListener('hidden.bs.modal', handleHidden);
