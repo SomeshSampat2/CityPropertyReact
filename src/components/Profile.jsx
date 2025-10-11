@@ -3,10 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { signOutUser } from '../services/authService';
 import { fetchPendingRequests, updateUserProfile, submitRoleRequest, checkExistingRequest } from '../services/firebase/profileService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+
+// Helper function to check if profile is complete
+const isProfileComplete = (userData) => {
+    return userData && userData.name && userData.mobile;
+};
+
+// Helper function to check if profile data is complete
+const isProfileDataComplete = (profileData) => {
+    return profileData && profileData.name && profileData.mobile;
+};
 
 const Profile = () => {
     const navigate = useNavigate();
-    const { user, userData, isAuthenticated } = useAuth();
+    const { user, userData, isAuthenticated, hasCompleteProfile, updateAuthContext } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [currentRole, setCurrentRole] = useState('user');
@@ -21,17 +33,32 @@ const Profile = () => {
 
     useEffect(() => {
         const fetchUserData = async () => {
-            if (user && userData) {
-                setCurrentRole(userData.role || 'user');
-                await fetchPendingRequestsData();
-                setLoading(false);
+            if (user) {
+                if (userData) {
+                    // User data is available
+                    setCurrentRole(userData.role || 'user');
+                    await fetchPendingRequestsData();
+                    setLoading(false);
+                } else {
+                    // User data not available yet (new user)
+                    // Set loading to false so the form can render with empty/default values
+                    console.log('Profile: User data not available yet, showing form with defaults');
+                    setCurrentRole('user'); // Default role for new users
+                    setLoading(false);
+                }
             }
         };
 
-        if (user && userData) {
-            fetchUserData();
-        }
+        fetchUserData();
     }, [user, userData]);
+
+    // Effect to handle navigation when profile becomes complete (backup method)
+    useEffect(() => {
+        if (hasCompleteProfile && !loading) {
+            console.log('Profile: hasCompleteProfile is true (backup navigation)');
+            // This serves as a backup in case manual update doesn't work
+        }
+    }, [hasCompleteProfile, loading]);
 
     const fetchPendingRequestsData = async () => {
         if (!user) return;
@@ -57,9 +84,48 @@ const Profile = () => {
 
             if (user) {
                 await updateUserProfile(user.uid, profileData);
+
+                // Check if the form data is complete
+                const profileDataIsComplete = isProfileDataComplete(profileData);
+
                 console.log('✅ Profile saved successfully');
-                // Show success message
-                alert('Profile updated successfully!');
+                console.log('Profile data complete:', profileDataIsComplete);
+                console.log('Form data:', profileData);
+
+                if (profileDataIsComplete) {
+                    // Profile data is complete - force AuthContext refresh and navigate
+                    console.log('Profile data is complete - forcing AuthContext refresh');
+
+                    // Force a manual refresh of the current user's data in AuthContext
+                    // by triggering the auth state change listener again
+                    const currentUser = user;
+                    if (currentUser) {
+                        // Re-fetch the user document to ensure AuthContext updates
+                        const userDocRef = doc(db, 'users', currentUser.uid);
+                        getDoc(userDocRef).then((doc) => {
+                            if (doc.exists()) {
+                                const updatedData = doc.data();
+                                console.log('Profile: Manually fetched updated user data:', updatedData);
+
+                                // Force AuthContext update using the context method
+                                updateAuthContext(updatedData);
+
+                                // Navigate after a small delay to ensure state updates
+                                setTimeout(() => {
+                                    console.log('Profile: Navigating to home after manual AuthContext update');
+                                    navigate('/home');
+                                }, 100);
+                            }
+                        }).catch((error) => {
+                            console.error('Profile: Error fetching updated user data:', error);
+                            // Navigate anyway as fallback
+                            navigate('/home');
+                        });
+                    }
+                } else {
+                    // Profile data is still incomplete, show message
+                    alert('Profile updated successfully! Please complete all required fields.');
+                }
             }
         } catch (error) {
             console.error('Error updating profile:', error);
@@ -116,7 +182,7 @@ const Profile = () => {
         );
     }
 
-    const profileImageUrl = user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.name || user?.email || 'User')}&background=667eea&color=ffffff&size=150`;
+    const profileImageUrl = user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.name || user?.displayName || user?.email || 'User')}&background=667eea&color=ffffff&size=150`;
 
     return (
         <React.Fragment>

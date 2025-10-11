@@ -16,8 +16,19 @@ import BlockedUserOverlay from './components/BlockedUserOverlay';
 import { auth } from './config/firebase';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
+// Component to protect routes that require complete profiles
+const ProfileRequiredRoute = ({ children }) => {
+    const { hasCompleteProfile } = useAuth();
+
+    if (!hasCompleteProfile) {
+        return <Navigate to="/profile" replace />;
+    }
+
+    return children;
+};
+
 const AppContent = () => {
-    const { user, loading, isBlocked, isAuthenticated } = useAuth();
+    const { user, loading, isBlocked, isAuthenticated, hasCompleteProfile } = useAuth();
     const location = useLocation();
 
     // Handle logout for blocked users
@@ -56,14 +67,14 @@ const AppContent = () => {
             <div className="content-area">
                 <Routes>
                     <Route path="/" element={<Login />} />
-                    <Route path="/home" element={<Home />} />
-                    <Route path="/favorites" element={<Favorites />} />
+                    <Route path="/home" element={<ProfileRequiredRoute><Home /></ProfileRequiredRoute>} />
+                    <Route path="/favorites" element={<ProfileRequiredRoute><Favorites /></ProfileRequiredRoute>} />
                     <Route path="/about" element={<About />} />
                     <Route path="/profile" element={<Profile />} />
-                    <Route path="/my-properties" element={<MyProperties />} />
+                    <Route path="/my-properties" element={<ProfileRequiredRoute><MyProperties /></ProfileRequiredRoute>} />
                     <Route path="/requests" element={<ProtectedRoute requiredRole="superadmin"><Requests /></ProtectedRoute>} />
                     <Route path="/dashboard" element={<ProtectedRoute requiredRole="superadmin"><Dashboard /></ProtectedRoute>} />
-                    <Route path="/property-details" element={<PropertyDetails />} />
+                    <Route path="/property-details" element={<ProfileRequiredRoute><PropertyDetails /></ProfileRequiredRoute>} />
                 </Routes>
             </div>
         </div>

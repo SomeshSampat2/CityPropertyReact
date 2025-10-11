@@ -14,17 +14,23 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+console.log("Firebase app initialized:", app.name);
 
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
+console.log("Firebase Auth initialized");
 
 // Initialize Cloud Firestore and get a reference to the service
 export const db = getFirestore(app);
+console.log("Firebase Firestore initialized");
 
 // Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
+
+// Configure auth to handle popup issues better
+auth.settings.appVerificationDisabledForTesting = false;
 
 export default app;
