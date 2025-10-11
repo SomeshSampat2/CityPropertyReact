@@ -9,18 +9,69 @@ const SUPERADMIN_EMAILS = [
 ];
 
 // Handle post-login redirects (including return URLs)
-// Note: Post-login redirect logic is now handled in the Login component
-// using React Router navigation instead of window.location.href
+function handlePostLoginRedirect(userData = null) {
+    console.log('handlePostLoginRedirect called with userData:', userData);
+
+    // Check for return URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const returnUrl = urlParams.get('returnUrl');
+
+    if (returnUrl) {
+        console.log('Redirecting to return URL:', returnUrl);
+        // Use React Router navigation if available, fallback to window.location
+        if (window.ReactRouterNavigate) {
+            window.ReactRouterNavigate(decodeURIComponent(returnUrl));
+        } else {
+            window.location.href = decodeURIComponent(returnUrl);
+        }
+        return;
+    }
+
+    // Default redirect logic based on profile completion
+    if (userData && (!userData.name || !userData.mobile)) {
+        console.log('User has incomplete profile, redirecting to /profile');
+        if (window.ReactRouterNavigate) {
+            window.ReactRouterNavigate('/profile');
+        } else {
+            window.location.href = "/profile";
+        }
+    } else {
+        console.log('User has complete profile, redirecting to /home');
+        if (window.ReactRouterNavigate) {
+            window.ReactRouterNavigate('/home');
+        } else {
+            window.location.href = "/home";
+        }
+    }
+}
 
 // Google Sign-In function
 export const signInWithGoogle = async () => {
     try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const credential = result.credential;
-        const token = credential.accessToken;
-        const user = result.user;
+        console.log("Starting Google sign-in popup...");
 
+        // Add timeout to prevent hanging
+        const authPromise = signInWithPopup(auth, googleProvider);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Authentication timeout - please check if popup was blocked")), 30000)
+        );
+
+        const result = await Promise.race([authPromise, timeoutPromise]);
+
+        // Handle credential safely - it might be undefined in some cases
+        let token = null;
+        if (result.credential && result.credential.accessToken) {
+            token = result.credential.accessToken;
+        }
+
+        const user = result.user;
         console.log("Signed in user:", user);
+        console.log("Credential available:", !!result.credential);
+        console.log("Access token available:", !!token);
+
+        if (!user) {
+            throw new Error("No user returned from authentication");
+        }
 
         // Check if this is a new user and create user document with appropriate role
         const userDocRef = doc(db, 'users', user.uid);
@@ -33,6 +84,7 @@ export const signInWithGoogle = async () => {
                 const userRole = SUPERADMIN_EMAILS.includes(user.email) ? 'superadmin' : 'user';
 
                 // New user - create user document with appropriate role
+                console.log('Creating new user document...');
                 await setDoc(userDocRef, {
                     name: user.displayName || '',
                     email: user.email,
@@ -44,34 +96,70 @@ export const signInWithGoogle = async () => {
                 });
 
                 console.log(`New user document created with ${userRole} role`);
-                // For new users, always go to profile page unless there's a return URL
-                handlePostLoginRedirect({ name: '', mobile: '' });
+
+                // Wait a moment for the document to be fully written and then verify it exists
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Verify the document was created successfully
+                const verifyDoc = await getDoc(userDocRef);
+                if (verifyDoc.exists()) {
+                    console.log('User document verified successfully');
+                    // For new users, always go to profile page unless there's a return URL
+                    console.log('Redirecting new user to profile...');
+                    handlePostLoginRedirect({ name: '', mobile: '' });
+                } else {
+                    throw new Error('Failed to create user document in Firestore');
+                }
             } else {
                 // Existing user - check if they should be upgraded to SuperAdmin
                 const userData = docSnap.data();
                 const shouldBeSuperAdmin = SUPERADMIN_EMAILS.includes(user.email);
 
-                if (shouldBeSuperAdmin && userData.role !== 'superadmin') {
-                    // Upgrade to SuperAdmin
-                    await updateDoc(userDocRef, {
-                        role: 'superadmin',
-                        updatedAt: serverTimestamp()
-                    });
+                            if (shouldBeSuperAdmin && userData.role !== 'superadmin') {
+                                // Upgrade to SuperAdmin
+                                console.log('Upgrading user to SuperAdmin...');
+                                await updateDoc(userDocRef, {
+                                    role: 'superadmin',
+                                    updatedAt: serverTimestamp()
+                                });
 
-                    console.log('User upgraded to SuperAdmin');
-                    // Navigation is handled by the Login component's useEffect
-                } else {
-                    // Navigation is handled by the Login component's useEffect
-                }
+                                // Wait for update to complete and verify
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                const updatedDoc = await getDoc(userDocRef);
+                                const updatedData = updatedDoc.data();
+
+                                console.log('User upgraded to SuperAdmin successfully');
+                                // Use updated user data for navigation
+                                console.log('Redirecting upgraded user...');
+                                handlePostLoginRedirect(updatedData);
+                            } else {
+                                // Existing user - redirect based on profile completion or return URL
+                                console.log('Redirecting existing user...');
+                                handlePostLoginRedirect(userData);
+                            }
             }
         } catch (error) {
             console.error("Error checking/creating user document:", error);
-            // Navigation is handled by the Login component's useEffect
+            // Default to profile page on error
+            console.log('Redirecting on error...');
+            handlePostLoginRedirect({ name: '', mobile: '' });
         }
 
     } catch (error) {
-        console.error("Google sign-in error:", error.message);
-        throw error;
+        console.error("Google sign-in error:", error);
+
+        // Provide more specific error messages
+        if (error.code === 'auth/popup-closed-by-user') {
+            throw new Error("Sign-in popup was closed before completing. Please try again.");
+        } else if (error.code === 'auth/popup-blocked') {
+            throw new Error("Sign-in popup was blocked by your browser. Please allow popups for this site.");
+        } else if (error.code === 'auth/cancelled-popup-request') {
+            throw new Error("Sign-in request was cancelled. Please try again.");
+        } else if (error.message && error.message.includes('accessToken')) {
+            throw new Error("Authentication succeeded but token access failed. Please try again.");
+        } else {
+            throw new Error(`Authentication failed: ${error.message || 'Unknown error'}`);
+        }
     }
 };
 

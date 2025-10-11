@@ -6,7 +6,7 @@ import { signOutUser, isSuperAdminEmail } from '../services/authService';
 const Toolbar = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, userData, userRole, loading } = useAuth();
+    const { user, userData, userRole, loading, hasCompleteProfile } = useAuth();
 
     const handleLogout = async () => {
         try {
@@ -38,7 +38,7 @@ const Toolbar = () => {
     }, [currentRole]);
 
     // Debug logging for troubleshooting (remove in production)
-    console.log('Toolbar - userRole:', userRole, 'userData.role:', userData?.role, 'user.email:', user?.email, 'isSuperAdminEmail:', user?.email ? isSuperAdminEmail(user.email) : false, 'currentRole:', currentRole, 'shouldShowRequests:', shouldShowRequests, 'shouldShowDashboard:', shouldShowDashboard);
+    console.log('Toolbar - userRole:', userRole, 'userData.role:', userData?.role, 'user.email:', user?.email, 'isSuperAdminEmail:', user?.email ? isSuperAdminEmail(user.email) : false, 'currentRole:', currentRole, 'hasCompleteProfile:', hasCompleteProfile, 'shouldShowRequests:', shouldShowRequests, 'shouldShowDashboard:', shouldShowDashboard);
 
     if (!user) {
         return null; // Don't show toolbar if user is not authenticated
@@ -81,42 +81,54 @@ const Toolbar = () => {
                 </button>
                 <div className="collapse navbar-collapse" id="navbarNav">
                     <ul className="navbar-nav ms-auto">
-                        <li className="nav-item">
-                            <Link className={`nav-link ${isActive('/home')}`} to="/home">
-                                <i className="fas fa-home me-1"></i>Home
-                            </Link>
-                        </li>
-                        <li className="nav-item">
-                            <Link className={`nav-link ${isActive('/favorites')}`} to="/favorites">
-                                <i className="fas fa-heart me-1"></i>Favorites
-                            </Link>
-                        </li>
-                        <li className="nav-item">
-                            <Link className={`nav-link ${isActive('/about')}`} to="/about">
-                                <i className="fas fa-info-circle me-1"></i>About
-                            </Link>
-                        </li>
-                        <li className="nav-item">
-                            <Link className={`nav-link ${isActive('/profile')}`} to="/profile">
-                                <i className="fas fa-user me-1"></i>Profile
-                            </Link>
-                        </li>
-                        <li className="nav-item">
-                            <Link className={`nav-link ${isActive('/my-properties')}`} to="/my-properties">
-                                <i className="fas fa-building me-1"></i>My Properties
-                            </Link>
-                        </li>
-                        {shouldShowRequests && (
-                            <li className="nav-item" id="requests-nav-item">
-                                <Link className={`nav-link ${isActive('/requests')}`} to="/requests">
-                                    <i className="fas fa-user-cog me-1"></i>Requests
-                                </Link>
-                            </li>
-                        )}
-                        {shouldShowDashboard && (
-                            <li className="nav-item" id="dashboard-nav-item">
-                                <Link className={`nav-link ${isActive('/dashboard')}`} to="/dashboard">
-                                    <i className="fas fa-tachometer-alt me-1"></i>Dashboard
+                        {hasCompleteProfile ? (
+                            // Show all navigation items when profile is complete
+                            <>
+                                <li className="nav-item">
+                                    <Link className={`nav-link ${isActive('/home')}`} to="/home">
+                                        <i className="fas fa-home me-1"></i>Home
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className={`nav-link ${isActive('/favorites')}`} to="/favorites">
+                                        <i className="fas fa-heart me-1"></i>Favorites
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className={`nav-link ${isActive('/about')}`} to="/about">
+                                        <i className="fas fa-info-circle me-1"></i>About
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className={`nav-link ${isActive('/profile')}`} to="/profile">
+                                        <i className="fas fa-user me-1"></i>Profile
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className={`nav-link ${isActive('/my-properties')}`} to="/my-properties">
+                                        <i className="fas fa-building me-1"></i>My Properties
+                                    </Link>
+                                </li>
+                                {shouldShowRequests && (
+                                    <li className="nav-item" id="requests-nav-item">
+                                        <Link className={`nav-link ${isActive('/requests')}`} to="/requests">
+                                            <i className="fas fa-user-cog me-1"></i>Requests
+                                        </Link>
+                                    </li>
+                                )}
+                                {shouldShowDashboard && (
+                                    <li className="nav-item" id="dashboard-nav-item">
+                                        <Link className={`nav-link ${isActive('/dashboard')}`} to="/dashboard">
+                                            <i className="fas fa-tachometer-alt me-1"></i>Dashboard
+                                        </Link>
+                                    </li>
+                                )}
+                            </>
+                        ) : (
+                            // Show only profile tab when profile is incomplete
+                            <li className="nav-item">
+                                <Link className={`nav-link ${isActive('/profile')}`} to="/profile">
+                                    <i className="fas fa-user me-1"></i>Complete Profile
                                 </Link>
                             </li>
                         )}

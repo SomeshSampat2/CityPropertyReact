@@ -7,11 +7,20 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'animate.css';
 import '../styles/styles.css';
 
+// Helper function to check if user profile is complete
+const isProfileComplete = (userData) => {
+    return userData && userData.name && userData.mobile;
+};
+
 const Login = () => {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const [shouldRedirect, setShouldRedirect] = useState(false);
 
     useEffect(() => {
+        // Set up React Router navigation function for authService
+        window.ReactRouterNavigate = navigate;
+
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             if (user) {
                 try {
@@ -30,11 +39,25 @@ const Login = () => {
                         }
 
                         // Default redirect logic based on profile completion
-                        if (!userData.name || !userData.mobile) {
+                        if (!isProfileComplete(userData)) {
+                            console.log('User profile incomplete, redirecting to profile');
                             navigate('/profile');
                         } else {
+                            console.log('User profile complete, redirecting to home');
                             navigate('/home');
                         }
+                    } else {
+                        // User document doesn't exist yet (new user), authService will create it
+                        console.log('User document not found (new user), authService will create it and redirect');
+                        // Set redirect flag to show loading while authService creates the document
+                        setShouldRedirect(true);
+
+                        // Set a timeout to prevent infinite redirecting state
+                        setTimeout(() => {
+                            console.log('Redirect timeout reached, navigating to profile');
+                            setShouldRedirect(false);
+                            navigate('/profile');
+                        }, 5000);
                     }
                 } catch (error) {
                     console.error('Error fetching user data:', error);
@@ -43,19 +66,66 @@ const Login = () => {
             }
         });
 
-        return unsubscribe;
+        return () => {
+            unsubscribe();
+            // Clean up the global navigation function
+            delete window.ReactRouterNavigate;
+        };
     }, [navigate]);
 
     const handleGoogleSignIn = async () => {
+        // Check if popup might be blocked
+        const popupTest = window.open('', '_blank', 'width=1,height=1');
+        if (!popupTest || popupTest.closed) {
+            alert('Popup blocker detected! Please allow popups for this site and try again.');
+            return;
+        }
+        popupTest.close();
+
         setIsLoading(true);
         try {
             await signInWithGoogle();
-            // Navigation will be handled by the useEffect above
+            // Set redirect flag to show loading state while navigation happens
+            // Only set if not already redirecting
+            if (!shouldRedirect) {
+                setShouldRedirect(true);
+            }
         } catch (error) {
             console.error('Sign in failed:', error);
+
+            // Show error message to user
+            alert(`Sign in failed: ${error.message}`);
+
+            // Reset loading state after error
             setIsLoading(false);
+
+            // Also reset redirect flag in case it was set
+            setShouldRedirect(false);
+
+            // If we were in redirecting state, navigate to profile as fallback
+            if (shouldRedirect) {
+                navigate('/profile');
+            }
         }
     };
+
+    // Show loading state if user should be redirected
+    if (shouldRedirect) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100" style={{
+                background: 'linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80") no-repeat center center fixed',
+                backgroundSize: 'cover'
+            }}>
+                <div className="text-center">
+                    <div className="spinner-border text-white mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 className="text-white">Authenticating...</h5>
+                    <p className="text-white-50 small mt-2">Please wait while we verify your account...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div id="login-container" style={{
