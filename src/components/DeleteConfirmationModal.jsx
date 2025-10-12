@@ -1,6 +1,6 @@
 import React from 'react';
 
-const DeleteConfirmationModal = ({ show, onHide, onConfirm, propertyName }) => {
+const DeleteConfirmationModal = ({ show, onHide, onConfirm, itemName, itemType = "item" }) => {
     if (!show) return null;
 
     return (
@@ -31,10 +31,12 @@ const DeleteConfirmationModal = ({ show, onHide, onConfirm, propertyName }) => {
                     </div>
 
                     <div className="modal-body">
-                        <p>Are you sure you want to delete this property? This action cannot be undone.</p>
-                        <p className="text-muted small">
-                            Property: <strong>{propertyName}</strong>
-                        </p>
+                        <p>Are you sure you want to delete this {itemType}? This action cannot be undone.</p>
+                        {itemName && (
+                            <p className="text-muted small">
+                                {itemType.charAt(0).toUpperCase() + itemType.slice(1)}: <strong>{itemName}</strong>
+                            </p>
+                        )}
                     </div>
 
                     <div className="modal-footer">
@@ -43,7 +45,7 @@ const DeleteConfirmationModal = ({ show, onHide, onConfirm, propertyName }) => {
                         </button>
                         <button type="button" className="btn btn-danger" onClick={onConfirm}>
                             <i className="fas fa-trash me-2"></i>
-                            Delete Property
+                            Delete {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
                         </button>
                     </div>
                 </div>

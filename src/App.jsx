@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
 import Toolbar from './components/Toolbar';
 import Home from './components/Home';
+import Auction from './components/Auction';
+import AuctionDetails from './components/AuctionDetails';
 import Favorites from './components/Favorites';
 import About from './components/About';
 import Profile from './components/Profile';
@@ -68,6 +70,8 @@ const AppContent = () => {
                 <Routes>
                     <Route path="/" element={<Login />} />
                     <Route path="/home" element={<ProfileRequiredRoute><Home /></ProfileRequiredRoute>} />
+                    <Route path="/auctions" element={<ProfileRequiredRoute><Auction /></ProfileRequiredRoute>} />
+                    <Route path="/auction-details" element={<ProfileRequiredRoute><AuctionDetails /></ProfileRequiredRoute>} />
                     <Route path="/favorites" element={<ProfileRequiredRoute><Favorites /></ProfileRequiredRoute>} />
                     <Route path="/about" element={<About />} />
                     <Route path="/profile" element={<Profile />} />

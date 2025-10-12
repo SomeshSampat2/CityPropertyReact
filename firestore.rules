@@ -1,0 +1,81 @@
+rules_version = '2';
+
+// Firebase Security Rules for PropertiesDealer Application
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin']);
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isOwnerOrAdmin(userId) {
+      return isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAdmin() && userId != request.auth.uid;
+    }
+
+    // Properties collection rules
+    match /properties/{propertyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.createdBy;
+      allow update, delete: if isAuthenticated() && isOwnerOrAdmin(request.resource.data.createdBy);
+    }
+
+    // Auctions collection rules - Based on Auction Module requirements
+    match /auctions/{auctionId} {
+      // Read rules:
+      // - All authenticated users can read auctions where auctionDate >= now
+      // - Only auction owner can read past auctions (auctionDate < now)
+      allow read: if isAuthenticated() &&
+        (
+          // Future auctions visible to all
+          (request.resource.data.auctionDate >= request.time) ||
+          // Past auctions visible only to owner
+          (isOwner(request.resource.data.ownerId))
+        );
+
+      // Write rules:
+      // - Only Admin and SuperAdmin can create auctions
+      allow create: if isAuthenticated() && isAdmin() &&
+        request.auth.uid == request.resource.data.ownerId;
+
+      // Edit/Delete rules:
+      // - Only auction owner can edit/delete their auctions
+      allow update, delete: if isAuthenticated() && isOwner(request.resource.data.ownerId);
+    }
+
+    // Favorites collection rules
+    match /users/{userId}/favorites/{propertyId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Requests collection rules (SuperAdmin only)
+    match /requests/{requestId} {
+      allow read, write: if isAuthenticated() && isSuperAdmin();
+    }
+
+    // Default deny rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

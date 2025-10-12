@@ -2,6 +2,7 @@
 // Central export point for all Firebase-related services
 
 export * from './homeFirebaseService';
+export * from './auctionService';
 
 // Future exports for other Firebase services can be added here:
 // export * from './authFirebaseService';

@@ -37,6 +37,11 @@ const Toolbar = () => {
         return currentRole === 'superadmin';
     }, [currentRole]);
 
+    const shouldShowAuctions = useMemo(() => {
+        // Show auctions tab only for admin and superadmin users
+        return currentRole === 'admin' || currentRole === 'superadmin';
+    }, [currentRole]);
+
     // Debug logging for troubleshooting (remove in production)
     console.log('Toolbar - userRole:', userRole, 'userData.role:', userData?.role, 'user.email:', user?.email, 'isSuperAdminEmail:', user?.email ? isSuperAdminEmail(user.email) : false, 'currentRole:', currentRole, 'hasCompleteProfile:', hasCompleteProfile, 'shouldShowRequests:', shouldShowRequests, 'shouldShowDashboard:', shouldShowDashboard);
 
@@ -109,6 +114,13 @@ const Toolbar = () => {
                                         <i className="fas fa-building me-1"></i>My Properties
                                     </Link>
                                 </li>
+                                {shouldShowAuctions && (
+                                    <li className="nav-item">
+                                        <Link className={`nav-link ${isActive('/auctions')}`} to="/auctions">
+                                            <i className="fas fa-gavel me-1"></i>Auctions
+                                        </Link>
+                                    </li>
+                                )}
                                 {shouldShowRequests && (
                                     <li className="nav-item" id="requests-nav-item">
                                         <Link className={`nav-link ${isActive('/requests')}`} to="/requests">
