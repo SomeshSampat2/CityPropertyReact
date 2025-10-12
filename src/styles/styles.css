@@ -297,6 +297,229 @@ body {
     background: rgba(102, 126, 234, 0.1);
 }
 
+/* ============ AUCTION CARDS ============ */
+
+.auction-card {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    height: 100%;
+}
+
+.auction-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.auction-card .card-img-top {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    transition: transform 0.3s ease;
+}
+
+.auction-card:hover .card-img-top {
+    transform: scale(1.02);
+}
+
+.auction-card .card-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.auction-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.auction-card .description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.auction-details {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.auction-details .text-center {
+    padding: 0.5rem;
+}
+
+.auction-details small {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.auction-details strong {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.auction-meta {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.auction-meta .text-muted {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.auction-meta i {
+    opacity: 0.8;
+}
+
+/* Enhanced badge styling */
+.auction-card .badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Admin action buttons */
+.auction-card .btn-outline-primary,
+.auction-card .btn-outline-danger {
+    border-width: 2px;
+    font-size: 0.8rem;
+}
+
+.auction-card .btn-outline-primary:hover,
+.auction-card .btn-outline-danger:hover {
+    transform: scale(1.05);
+}
+
+/* View Details button */
+.auction-card .btn-primary {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+}
+
+/* ============ PROPERTY IMAGE CAROUSEL ============ */
+
+.property-image-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.image-carousel {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.property-hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+}
+
+.property-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    border-radius: 50% !important;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.property-prev-btn {
+    left: 15px;
+}
+
+.property-next-btn {
+    right: 15px;
+}
+
+.property-image-counter {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 10;
+}
+
+.property-category-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 5;
+}
+
+.listing-type-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 5;
+}
+
+/* ============ CLICKABLE INPUT GROUPS ============ */
+
+.clickable-input-group {
+    position: relative;
+}
+
+.clickable-input-group input[type="date"],
+.clickable-input-group input[type="time"] {
+    position: relative;
+    z-index: 1;
+}
+
+.clickable-input-group input[type="date"]:focus,
+.clickable-input-group input[type="time"]:focus {
+    z-index: 2;
+}
+
+/* Make the entire input group clickable */
+.clickable-input-group::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    cursor: pointer;
+}
+
+/* Ensure form controls maintain their clickability */
+.clickable-input-group .form-control {
+    position: relative;
+    z-index: 1;
+}
+
 /* ============ CARDS ============ */
 .card {
     background: var(--bg-secondary);
