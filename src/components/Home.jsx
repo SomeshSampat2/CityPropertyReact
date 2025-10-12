@@ -393,6 +393,7 @@ const Home = () => {
     const [favorites, setFavorites] = useState(new Set());
     const [filtering, setFiltering] = useState(false);
     const [selectedPropertyType, setSelectedPropertyType] = useState(null);
+    const [listingType, setListingType] = useState('rent');
     const [formData, setFormData] = useState({});
     const [amenities, setAmenities] = useState([]);
 
@@ -401,6 +402,7 @@ const Home = () => {
         setSelectedPropertyType(propertyType);
         setFormData({});
         setAmenities([]);
+        setListingType('rent'); // Reset to rent when changing property type
 
         // Close property type modal and open add property modal
         const propertyTypeModalElement = document.getElementById('propertyTypeModal');
@@ -479,6 +481,7 @@ const Home = () => {
         setSelectedPropertyType(null);
         setFormData({});
         setAmenities([]);
+        setListingType('rent');
 
         // Close current modal and open property type modal
         const currentModalElement = document.getElementById('addPropertyModal');
@@ -529,6 +532,7 @@ const Home = () => {
             setSelectedPropertyType(null);
             setFormData({});
             setAmenities([]);
+            setListingType('rent');
         };
 
         // Add event listeners for both modals
@@ -706,7 +710,7 @@ const Home = () => {
                 description: document.getElementById('property-description').value,
                 price: parseInt(document.getElementById('property-price').value),
                 propertyType: selectedPropertyType,
-                listingType: 'rent', // Always rental for now, matching JS project
+                listingType: listingType, // Use selected listing type (rent or sale)
 
                 // Address information
                 buildingName: document.getElementById('property-address').value,
@@ -741,6 +745,7 @@ const Home = () => {
             setFormData({});
             setAmenities([]);
             setSelectedPropertyType(null);
+            setListingType('rent');
 
             const modalElement = document.getElementById('addPropertyModal');
             const modal = window.bootstrap.Modal.getInstance(modalElement);
@@ -1422,10 +1427,56 @@ const Home = () => {
                                         <input type="text" className="form-control" id="property-name" required placeholder="e.g., Green Valley Apartments" />
                                     </div>
                                     <div className="col-md-6 mb-3">
-                                        <label htmlFor="property-price" className="form-label">Monthly Rent (₹) *</label>
+                                        <label className="form-label">Listing Type *</label>
+                                        <div className="row g-2">
+                                            <div className="col-6">
+                                                <div className="form-check">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="radio"
+                                                        name="listing-type"
+                                                        id="listing-rent"
+                                                        value="rent"
+                                                        checked={listingType === 'rent'}
+                                                        onChange={(e) => setListingType(e.target.value)}
+                                                        required
+                                                    />
+                                                    <label className="form-check-label" htmlFor="listing-rent">
+                                                        <i className="fas fa-home me-1 text-info"></i>For Rent
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="col-6">
+                                                <div className="form-check">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="radio"
+                                                        name="listing-type"
+                                                        id="listing-sale"
+                                                        value="sale"
+                                                        checked={listingType === 'sale'}
+                                                        onChange={(e) => setListingType(e.target.value)}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="listing-sale">
+                                                        <i className="fas fa-shopping-cart me-1 text-success"></i>For Sale
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <label htmlFor="property-price" className="form-label">
+                                            {listingType === 'rent' ? 'Monthly Rent (₹)' : 'Sale Price (₹)'} *
+                                        </label>
                                         <div className="input-group">
                                             <span className="input-group-text">₹</span>
-                                            <input type="number" className="form-control" id="property-price" required placeholder="e.g., 25000" />
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                id="property-price"
+                                                required
+                                                placeholder={listingType === 'rent' ? 'e.g., 25000' : 'e.g., 5000000'}
+                                            />
                                         </div>
                                     </div>
                                     <div className="col-12 mb-3">
