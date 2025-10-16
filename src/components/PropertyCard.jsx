@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { removeFromFavorites, addToFavorites } from '../services/favoritesService';
 import { getPropertyTypeInfo, getPropertyTypeDetails, formatPrice, formatLocation, sampleImages } from '../utils/propertyTypeConfigs';
 
-const PropertyCard = ({ property, onRemoveFavorite }) => {
+const PropertyCard = ({ property, index = 0, onRemoveFavorite }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -38,9 +38,8 @@ const PropertyCard = ({ property, onRemoveFavorite }) => {
     const priceText = formatPrice(property);
     const { location, cityState } = formatLocation(property);
 
-    // Get sample image based on property ID (same logic as home screen)
-    const imageIndex = property.id ? parseInt(property.id.slice(-1), 16) % sampleImages.length : 0;
-    const displayImage = sampleImages[imageIndex];
+    // Get sample image based on index (same logic as home screen)
+    const displayImage = sampleImages[index % sampleImages.length];
 
     return (
         <div className="col-md-4 col-sm-6 col-12">

@@ -238,10 +238,11 @@ const Favorites = () => {
                     ) : (
                         /* Favorites Grid */
                         <div className="row g-4">
-                            {filteredFavorites.map(property => (
+                            {filteredFavorites.map((property, index) => (
                                 <PropertyCard
                                     key={property.id}
                                     property={property}
+                                    index={index}
                                     onRemoveFavorite={handleRemoveFavorite}
                                 />
                             ))}
